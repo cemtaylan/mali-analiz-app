@@ -1,0 +1,955 @@
+[
+  {
+    "code": "A",
+    "name": "AKTİF (VARLIKLAR)"
+  },
+  {
+    "code": "A.1",
+    "name": "I-DÖNEN VARLIKLAR"
+  },
+  {
+    "code": "A.1.1",
+    "name": "A-HAZIR DEĞERLER"
+  },
+  {
+    "code": "A.1.1.1",
+    "name": "1-KASA"
+  },
+  {
+    "code": "A.1.1.2",
+    "name": "2-ALINAN ÇEKLER"
+  },
+  {
+    "code": "A.1.1.3",
+    "name": "3-BANKALAR"
+  },
+  {
+    "code": "A.1.1.4",
+    "name": "4-VERİLEN ÇEKLER VE ÖDEME EMİRLERİ (-)"
+  },
+  {
+    "code": "A.1.1.5",
+    "name": "5-DİĞER HAZIR DEĞERLER"
+  },
+  {
+    "code": "A.1.2",
+    "name": "B-MENKUL KIYMETLER"
+  },
+  {
+    "code": "A.1.2.1",
+    "name": "1-HİSSE SENETLERİ"
+  },
+  {
+    "code": "A.1.2.2",
+    "name": "2-ÖZEL KESİM TAHVİL, SENET VE BONOLARI"
+  },
+  {
+    "code": "A.1.2.3",
+    "name": "3-KAMU KESİMİ TAHVİL, SENET VE BONOLARI"
+  },
+  {
+    "code": "A.1.2.4",
+    "name": "4-DİĞER MENKUL KIYMETLER"
+  },
+  {
+    "code": "A.1.2.5",
+    "name": "5-MENKUL KIYMETLER DEĞER DÜŞÜKLÜĞÜ KARŞILIĞI (-)"
+  },
+  {
+    "code": "A.1.3",
+    "name": "C-TİCARİ ALACAKLAR"
+  },
+  {
+    "code": "A.1.3.1",
+    "name": "1-ALICILAR"
+  },
+  {
+    "code": "A.1.3.2",
+    "name": "2-ALACAK SENETLERİ"
+  },
+  {
+    "code": "A.1.3.3",
+    "name": "3-ALACAK SENETLERİ REESKONTU (-)"
+  },
+  {
+    "code": "A.1.3.4",
+    "name": "4-KAZANILMAMIŞ FİNANSMAN GELİRLERİ (-)"
+  },
+  {
+    "code": "A.1.3.5",
+    "name": "5-VERİLEN DEPOZİTO VE TEMİNATLAR"
+  },
+  {
+    "code": "A.1.3.6",
+    "name": "6-DİĞER TİCARİ ALACAKLAR"
+  },
+  {
+    "code": "A.1.3.7",
+    "name": "7-ŞÜPHELİ TİCARİ ALACAKLAR"
+  },
+  {
+    "code": "A.1.3.8",
+    "name": "8-ŞÜPHELİ TİCARİ ALACAKLAR KARŞILIĞI (-)"
+  },
+  {
+    "code": "A.1.4",
+    "name": "D-DİĞER ALACAKLAR"
+  },
+  {
+    "code": "A.1.4.1",
+    "name": "1-ORTAKLARDAN ALACAKLAR"
+  },
+  {
+    "code": "A.1.4.2",
+    "name": "2-İŞTİRAKLERDEN ALACAKLAR"
+  },
+  {
+    "code": "A.1.4.3",
+    "name": "3-BAĞLI ORTAKLIKLARDAN ALACAKLAR"
+  },
+  {
+    "code": "A.1.4.4",
+    "name": "4-PERSONELDEN ALACAKLAR"
+  },
+  {
+    "code": "A.1.4.5",
+    "name": "5-DİĞER ÇEŞİTLİ ALACAKLAR"
+  },
+  {
+    "code": "A.1.4.6",
+    "name": "6-DİĞER ALACAK SENETLERİ REESKONTU (-)"
+  },
+  {
+    "code": "A.1.4.7",
+    "name": "7-ŞÜPHELİ DİĞER ALACAKLAR"
+  },
+  {
+    "code": "A.1.4.8",
+    "name": "8-ŞÜPHELİ DİĞER ALACAKLAR KARŞILIĞI (-)"
+  },
+  {
+    "code": "A.1.5",
+    "name": "E-STOKLAR"
+  },
+  {
+    "code": "A.1.5.1",
+    "name": "1-İLK MADDE VE MALZEME"
+  },
+  {
+    "code": "A.1.5.2",
+    "name": "2-YARI MAMULLER - ÜRETİM"
+  },
+  {
+    "code": "A.1.5.3",
+    "name": "3-MAMULLER"
+  },
+  {
+    "code": "A.1.5.4",
+    "name": "4-TİCARİ MALLAR"
+  },
+  {
+    "code": "A.1.5.5",
+    "name": "5-DİĞER STOKLAR"
+  },
+  {
+    "code": "A.1.5.6",
+    "name": "6-STOK DEĞER DÜŞÜKLÜĞÜ KARŞILIĞI (-)"
+  },
+  {
+    "code": "A.1.5.7",
+    "name": "7-VERİLEN SİPARİŞ AVANSLARI"
+  },
+  {
+    "code": "A.1.6",
+    "name": "F-YILLARA YAYGIN İNŞAAT VE ONARIM MALİYETLERİ"
+  },
+  {
+    "code": "A.1.6.1",
+    "name": "1-YILLARA YAYGIN İNŞAAT VE ONARIM MALİYETLERİ"
+  },
+  {
+    "code": "A.1.6.2",
+    "name": "2-YILLARA YAYGIN İNŞAAT ENFLASYON DÜZELTME HESABI"
+  },
+  {
+    "code": "A.1.6.3",
+    "name": "3-TAŞERONLARA VERİLEN AVANSLAR"
+  },
+  {
+    "code": "A.1.7",
+    "name": "G-GELECEK AYLARA AİT GİDERLER VE GELİR TAHAKKUKLARI"
+  },
+  {
+    "code": "A.1.7.1",
+    "name": "1-GELECEK AYLARA AİT GİDERLER"
+  },
+  {
+    "code": "A.1.7.2",
+    "name": "2-GELİR TAHAKKUKLARI"
+  },
+  {
+    "code": "A.1.8",
+    "name": "H-DİĞER DÖNEN VARLIKLAR"
+  },
+  {
+    "code": "A.1.8.1",
+    "name": "1-DEVREDEN KDV"
+  },
+  {
+    "code": "A.1.8.2",
+    "name": "2-İNDİRİLECEK KDV"
+  },
+  {
+    "code": "A.1.8.3",
+    "name": "3-DİĞER KDV"
+  },
+  {
+    "code": "A.1.8.4",
+    "name": "4-PEŞİN ÖDENEN VERGİLER VE FONLAR"
+  },
+  {
+    "code": "A.1.8.5",
+    "name": "5-İŞ AVANSLARI"
+  },
+  {
+    "code": "A.1.8.6",
+    "name": "6-PERSONEL AVANSLARI"
+  },
+  {
+    "code": "A.1.8.7",
+    "name": "7-SAYIM VE TESELLÜM NOKSANLARI"
+  },
+  {
+    "code": "A.1.8.8",
+    "name": "8-DİĞER ÇEŞİTLİ DÖNEN VARLIKLAR"
+  },
+  {
+    "code": "A.1.8.9",
+    "name": "9-DİĞER DÖNEN VARLIKLAR KARŞILIĞI (-)"
+  },
+  {
+    "code": "A.1.8.10",
+    "name": "10-GELECEK YILLARA İNDİRİLECEK KATMA DEĞER VERGİSİ"
+  },
+  {
+    "code": "A.2",
+    "name": "II-DURAN VARLIKLAR"
+  },
+  {
+    "code": "A.2.1",
+    "name": "A-TİCARİ ALACAKLAR"
+  },
+  {
+    "code": "A.2.1.1",
+    "name": "1-ALICILAR"
+  },
+  {
+    "code": "A.2.1.2",
+    "name": "2-ALACAK SENETLERİ"
+  },
+  {
+    "code": "A.2.1.3",
+    "name": "3-ALACAK SENETLERİ REESKONTU (-)"
+  },
+  {
+    "code": "A.2.1.4",
+    "name": "4-KAZANILMAMIŞ FİNANSAL KİRALAMA FAİZ GELİRLERİ (-)"
+  },
+  {
+    "code": "A.2.1.5",
+    "name": "5-VERİLEN DEPOZİTO VE TEMİNATLAR"
+  },
+  {
+    "code": "A.2.1.6",
+    "name": "6-ŞÜPHELİ ALACAKLAR KARŞILIĞI (-)"
+  },
+  {
+    "code": "A.2.2",
+    "name": "B-DİĞER ALACAKLAR"
+  },
+  {
+    "code": "A.2.2.1",
+    "name": "1-ORTAKLARDAN ALACAKLAR"
+  },
+  {
+    "code": "A.2.2.2",
+    "name": "2-İŞTİRAKLERDEN ALACAKLAR"
+  },
+  {
+    "code": "A.2.2.3",
+    "name": "3-BAĞLI ORTAKLIKLARDAN ALACAKLAR"
+  },
+  {
+    "code": "A.2.2.4",
+    "name": "4-PERSONELDEN ALACAKLAR"
+  },
+  {
+    "code": "A.2.2.5",
+    "name": "5-DİĞER ÇEŞİTLİ ALACAKLAR"
+  },
+  {
+    "code": "A.2.2.6",
+    "name": "6-DİĞER ALACAK SENETLERİ REESKONTU (-)"
+  },
+  {
+    "code": "A.2.2.7",
+    "name": "7-ŞÜPHELİ DİĞER ALACAKLAR KARŞILIĞI (-)"
+  },
+  {
+    "code": "A.2.3",
+    "name": "C-MALİ DURAN VARLIKLAR"
+  },
+  {
+    "code": "A.2.3.1",
+    "name": "1-BAĞLI MENKUL KIYMETLER"
+  },
+  {
+    "code": "A.2.3.2",
+    "name": "2-BAĞLI MENKUL KIYMETLER DEĞER DÜŞÜKLÜĞÜ KARŞILIĞI (-)"
+  },
+  {
+    "code": "A.2.3.3",
+    "name": "3-İŞTİRAKLER"
+  },
+  {
+    "code": "A.2.3.4",
+    "name": "4-İŞTİRAKLERE SERMAYE TAAHHÜTLERİ (-)"
+  },
+  {
+    "code": "A.2.3.5",
+    "name": "5-İŞTİRAKLER SERMAYE PAYLARI DEĞER DÜŞÜKLÜĞÜ KARŞILIĞI (-)"
+  },
+  {
+    "code": "A.2.3.6",
+    "name": "6-BAĞLI ORTAKLIKLAR"
+  },
+  {
+    "code": "A.2.3.7",
+    "name": "7-BAĞLI ORTAKLIKLARA SERMAYE TAAHHÜTLERİ (-)"
+  },
+  {
+    "code": "A.2.3.8",
+    "name": "8-BAĞLI ORTAKLIKLAR SERMAYE PAYLARI DEĞER DÜŞÜKLÜĞÜ KARŞILIĞI (-)"
+  },
+  {
+    "code": "A.2.3.9",
+    "name": "9-DİĞER MALİ DURAN VARLIKLAR"
+  },
+  {
+    "code": "A.2.3.10",
+    "name": "10-DİĞER MALİ DURAN VARLIKLAR KARŞILIĞI (-)"
+  },
+  {
+    "code": "A.2.4",
+    "name": "D-MADDİ DURAN VARLIKLAR"
+  },
+  {
+    "code": "A.2.4.1",
+    "name": "1-ARAZİ VE ARSALAR"
+  },
+  {
+    "code": "A.2.4.2",
+    "name": "2-YERALTINA VE YER ÜSTÜ DÜZENLEMELER"
+  },
+  {
+    "code": "A.2.4.3",
+    "name": "3-BİNALAR"
+  },
+  {
+    "code": "A.2.4.4",
+    "name": "4-TESİS, MAKİNE VE CİHAZLAR"
+  },
+  {
+    "code": "A.2.4.5",
+    "name": "5-TAŞITLAR"
+  },
+  {
+    "code": "A.2.4.6",
+    "name": "6-DEMİRBAŞLAR"
+  },
+  {
+    "code": "A.2.4.7",
+    "name": "7-DİĞER MADDİ DURAN VARLIKLAR"
+  },
+  {
+    "code": "A.2.4.8",
+    "name": "8-BİRİKMİŞ AMORTİSMANLAR (-)"
+  },
+  {
+    "code": "A.2.4.9",
+    "name": "9-YAPILMAKTA OLAN YATIRIMLAR"
+  },
+  {
+    "code": "A.2.4.10",
+    "name": "10-VERİLEN AVANSLAR"
+  },
+  {
+    "code": "A.2.5",
+    "name": "E-MADDİ OLMAYAN DURAN VARLIKLAR"
+  },
+  {
+    "code": "A.2.5.1",
+    "name": "1-HAKLAR"
+  },
+  {
+    "code": "A.2.5.2",
+    "name": "2-ŞEREFİYE"
+  },
+  {
+    "code": "A.2.5.3",
+    "name": "3-KURULUŞ VE ÖRGÜTLENME GİDERLERİ"
+  },
+  {
+    "code": "A.2.5.4",
+    "name": "4-ARAŞTIRMA VE GELİŞTİRME GİDERLERİ"
+  },
+  {
+    "code": "A.2.5.5",
+    "name": "5-ÖZEL MALİYETLER"
+  },
+  {
+    "code": "A.2.5.6",
+    "name": "6-DİĞER MADDİ OLMAYAN DURAN VARLIKLAR"
+  },
+  {
+    "code": "A.2.5.7",
+    "name": "7-BİRİKMİŞ AMORTİSMANLAR (-)"
+  },
+  {
+    "code": "A.2.5.8",
+    "name": "8-VERİLEN AVANSLAR"
+  },
+  {
+    "code": "A.2.6",
+    "name": "F-ÖZEL TÜKENMEYE TABİ VARLIKLAR"
+  },
+  {
+    "code": "A.2.6.1",
+    "name": "1-ARAMA GİDERLERİ"
+  },
+  {
+    "code": "A.2.6.2",
+    "name": "2-HAZIRLIK VE GELİŞTİRME GİDERLERİ"
+  },
+  {
+    "code": "A.2.6.3",
+    "name": "3-DİĞER ÖZEL TÜKENMEKTE TABİ VARLIKLAR"
+  },
+  {
+    "code": "A.2.6.4",
+    "name": "4-BİRİKMİŞ TÜKENME PAYLARI (-)"
+  },
+  {
+    "code": "A.2.6.5",
+    "name": "5-VERİLEN AVANSLAR"
+  },
+  {
+    "code": "A.2.7",
+    "name": "G-GELECEK YILLARA AİT GİDERLER VE GELİR TAHAKKUKLARI"
+  },
+  {
+    "code": "A.2.7.1",
+    "name": "1-GELECEK YILLARA AİT GİDERLER"
+  },
+  {
+    "code": "A.2.7.2",
+    "name": "2-GELİR TAHAKKUKLARI"
+  },
+  {
+    "code": "A.2.8",
+    "name": "H-DİĞER DURAN VARLIKLAR"
+  },
+  {
+    "code": "A.2.8.1",
+    "name": "1-GELECEK YILLARDA İNDİRİLECEK KATMA DEĞER VERGİSİ"
+  },
+  {
+    "code": "A.2.8.2",
+    "name": "2-DİĞER KATMA DEĞER VERGİSİ"
+  },
+  {
+    "code": "A.2.8.3",
+    "name": "3-GELECEK YILLARA İHTİYACI STOKLAR"
+  },
+  {
+    "code": "A.2.8.4",
+    "name": "4-ELDEN ÇIKARILANACAK STOKLAR VE MADDİ DURAN VARLIKLAR"
+  },
+  {
+    "code": "A.2.8.5",
+    "name": "5-PEŞİN ÖDENEN VERGİLER VE FONLAR"
+  },
+  {
+    "code": "A.2.8.6",
+    "name": "6-GEÇİCİ HESAP"
+  },
+  {
+    "code": "A.2.8.7",
+    "name": "7-DİĞER ÇEŞİTLİ DURAN VARLIKLAR"
+  },
+  {
+    "code": "A.2.8.8",
+    "name": "8-STOK DEĞER DÜŞÜKLÜĞÜ KARŞILIĞI (-)"
+  },
+  {
+    "code": "A.2.8.9",
+    "name": "9-BİRİKMİŞ AMORTİSMANLAR (-)"
+  },
+  {
+    "code": "P",
+    "name": "PASİF (KAYNAKLAR)"
+  },
+  {
+    "code": "P.1",
+    "name": "I-KISA VADELİ YABANCI KAYNAKLAR"
+  },
+  {
+    "code": "P.1.1",
+    "name": "A-MALİ BORÇLAR"
+  },
+  {
+    "code": "P.1.1.1",
+    "name": "1-BANKA KREDİLERİ"
+  },
+  {
+    "code": "P.1.1.2",
+    "name": "2-FİNANSAL KİRALAMA İŞLEMLERİNDEN BORÇLAR"
+  },
+  {
+    "code": "P.1.1.3",
+    "name": "3-ERTELENMİŞ FİNANSAL KİRALAMA BORÇLANMA MALİYETLERİ (-)"
+  },
+  {
+    "code": "P.1.1.4",
+    "name": "4-UZUN VADELİ KREDİLERİN ANAPARA TAKSİTLERİ VE FAİZLERİ"
+  },
+  {
+    "code": "P.1.1.5",
+    "name": "5-TAHVİL ANAPARA BORÇ, TAKSİT VE FAİZLERİ"
+  },
+  {
+    "code": "P.1.1.6",
+    "name": "6-ÇIKARILMIŞ BONOLAR VE SENETLER"
+  },
+  {
+    "code": "P.1.1.7",
+    "name": "7-ÇIKARILMIŞ DİĞER MENKUL KIYMETLER"
+  },
+  {
+    "code": "P.1.1.8",
+    "name": "8-MENKUL KIYMETLER İHRAÇ FARKI (-)"
+  },
+  {
+    "code": "P.1.1.9",
+    "name": "9-DİĞER MALİ BORÇLAR"
+  },
+  {
+    "code": "P.1.2",
+    "name": "B-TİCARİ BORÇLAR"
+  },
+  {
+    "code": "P.1.2.1",
+    "name": "1-SATICILAR"
+  },
+  {
+    "code": "P.1.2.2",
+    "name": "2-BORÇ SENETLERİ"
+  },
+  {
+    "code": "P.1.2.3",
+    "name": "3-BORÇ SENETLERİ REESKONTU (-)"
+  },
+  {
+    "code": "P.1.2.4",
+    "name": "4-ALINAN DEPOZİTO VE TEMİNATLAR"
+  },
+  {
+    "code": "P.1.2.5",
+    "name": "5-DİĞER TİCARİ BORÇLAR"
+  },
+  {
+    "code": "P.1.3",
+    "name": "C-DİĞER BORÇLAR"
+  },
+  {
+    "code": "P.1.3.1",
+    "name": "1-ORTAKLARA BORÇLAR"
+  },
+  {
+    "code": "P.1.3.2",
+    "name": "2-İŞTİRAKLERE BORÇLAR"
+  },
+  {
+    "code": "P.1.3.3",
+    "name": "3-BAĞLI ORTAKLIKLARA BORÇLAR"
+  },
+  {
+    "code": "P.1.3.4",
+    "name": "4-PERSONELE BORÇLAR"
+  },
+  {
+    "code": "P.1.3.5",
+    "name": "5-DİĞER ÇEŞİTLİ BORÇLAR"
+  },
+  {
+    "code": "P.1.3.6",
+    "name": "6-DİĞER BORÇ SENETLERİ REESKONTU (-)"
+  },
+  {
+    "code": "P.1.4",
+    "name": "D-ALINAN AVANSLAR"
+  },
+  {
+    "code": "P.1.4.1",
+    "name": "1-ALINAN SİPARİŞ AVANSLARI"
+  },
+  {
+    "code": "P.1.4.2",
+    "name": "2-ALINAN DİĞER AVANSLAR"
+  },
+  {
+    "code": "P.1.5",
+    "name": "E-YILLARA YAYGIN İNŞAAT VE ONARIM HAKEDİŞLERİ"
+  },
+  {
+    "code": "P.1.5.1",
+    "name": "1-YILLARA YAYGIN İNŞAAT VE ONARIM HAKEDİŞ BEDELLERİ"
+  },
+  {
+    "code": "P.1.5.2",
+    "name": "2-YILLARA YAYGIN İNŞAAT ENFLASYON DÜZELTME HESABI"
+  },
+  {
+    "code": "P.1.6",
+    "name": "F-ÖDENECEK VERGİ VE DİĞER YÜKÜMLÜLÜKLER"
+  },
+  {
+    "code": "P.1.6.1",
+    "name": "1-ÖDENECEK VERGİ VE FONLAR"
+  },
+  {
+    "code": "P.1.6.2",
+    "name": "2-ÖDENECEK SOSYAL GÜVENLİK KESİNTİLERİ"
+  },
+  {
+    "code": "P.1.6.3",
+    "name": "3-VADESİ GEÇMİŞ ERTELENMİŞ VEYA TAKSİTLENDİRİLMİŞ VERGİ VE DİĞER YÜKÜMLÜLÜKLER"
+  },
+  {
+    "code": "P.1.6.4",
+    "name": "4-ÖDENECEK DİĞER YÜKÜMLÜLÜKLER"
+  },
+  {
+    "code": "P.1.7",
+    "name": "G-BORÇ VE GİDER KARŞILIKLARI"
+  },
+  {
+    "code": "P.1.7.1",
+    "name": "1-DÖNEM KARI VERGİ VE DİĞER YASAL YÜKÜMLÜLÜK KARŞILIKLARI"
+  },
+  {
+    "code": "P.1.7.2",
+    "name": "2-DÖNEM KARININ PEŞİN ÖDENEN VERGİ VE DİĞER YÜKÜMLÜLÜKLER (-)"
+  },
+  {
+    "code": "P.1.7.3",
+    "name": "3-KIDEM TAZMİNATI KARŞILIĞI"
+  },
+  {
+    "code": "P.1.7.4",
+    "name": "4-MALİYET GİDERLERİ KARŞILIĞI"
+  },
+  {
+    "code": "P.1.7.5",
+    "name": "5-DİĞER BORÇ VE GİDER KARŞILIKLARI"
+  },
+  {
+    "code": "P.1.8",
+    "name": "H-GELECEK AYLARA AİT GELİRLER VE GİDER TAHAKKUKLARI"
+  },
+  {
+    "code": "P.1.8.1",
+    "name": "1-GELECEK AYLARA AİT GELİRLER"
+  },
+  {
+    "code": "P.1.8.2",
+    "name": "2-GİDER TAHAKKUKLARI"
+  },
+  {
+    "code": "P.1.9",
+    "name": "I-DİĞER KISA VADELİ YABANCI KAYNAKLAR"
+  },
+  {
+    "code": "P.1.9.1",
+    "name": "1-HESAPLANAN KDV"
+  },
+  {
+    "code": "P.1.9.2",
+    "name": "2-DİĞER KDV"
+  },
+  {
+    "code": "P.1.9.3",
+    "name": "3-MERKEZ VE ŞUBELER CARİ HESABI"
+  },
+  {
+    "code": "P.1.9.4",
+    "name": "4-SAYIM VE TESELLÜM FAZLALARI"
+  },
+  {
+    "code": "P.1.9.5",
+    "name": "5-DİĞER ÇEŞİTLİ YABANCI KAYNAKLAR"
+  },
+
+  {
+    "code": "P.2",
+    "name": "II-UZUN VADELİ YABANCI KAYNAKLAR"
+  },
+  {
+    "code": "P.2.1",
+    "name": "A-MALİ BORÇLAR"
+  },
+  {
+    "code": "P.2.1.1",
+    "name": "1-BANKA KREDİLERİ"
+  },
+  {
+    "code": "P.2.1.2",
+    "name": "2-FİNANSAL KİRALAMA İŞLEMLERİNDEN BORÇLAR"
+  },
+  {
+    "code": "P.2.1.3",
+    "name": "3-ERTELENMİŞ FİNANSAL KİRALAMA BORÇLANMA MALİYETLERİ (-)"
+  },
+  {
+    "code": "P.2.1.4",
+    "name": "4-ÇIKARILMIŞ TAHVİLLER"
+  },
+  {
+    "code": "P.2.1.5",
+    "name": "5-ÇIKARILMIŞ DİĞER MENKUL KIYMETLER"
+  },
+  {
+    "code": "P.2.1.6",
+    "name": "6-MENKUL KIYMETLER İHRAÇ FARKI (-)"
+  },
+  {
+    "code": "P.2.1.7",
+    "name": "7-DİĞER FİNANSAL BORÇLAR"
+  },
+  {
+    "code": "P.2.2",
+    "name": "B-TİCARİ BORÇLAR"
+  },
+  {
+    "code": "P.2.2.1",
+    "name": "1-SATICILAR"
+  },
+  {
+    "code": "P.2.2.2",
+    "name": "2-BORÇ SENETLERİ"
+  },
+  {
+    "code": "P.2.2.3",
+    "name": "3-BORÇ SENETLERİ REESKONTU (-)"
+  },
+  {
+    "code": "P.2.2.4",
+    "name": "4-ALINAN DEPOZİTO VE TEMİNATLAR"
+  },
+  {
+    "code": "P.2.2.5",
+    "name": "5-DİĞER TİCARİ BORÇLAR"
+  },
+  {
+    "code": "P.2.3",
+    "name": "C-DİĞER BORÇLAR"
+  },
+  {
+    "code": "P.2.3.1",
+    "name": "1-ORTAKLARA BORÇLAR"
+  },
+  {
+    "code": "P.2.3.2",
+    "name": "2-İŞTİRAKLERE BORÇLAR"
+  },
+  {
+    "code": "P.2.3.3",
+    "name": "3-BAĞLI ORTAKLIKLARA BORÇLAR"
+  },
+  {
+    "code": "P.2.3.4",
+    "name": "4-DİĞER ÇEŞİTLİ BORÇLAR"
+  },
+  {
+    "code": "P.2.3.5",
+    "name": "5-DİĞER BORÇ SENETLERİ REESKONTU (-)"
+  },
+  {
+    "code": "P.2.3.6",
+    "name": "6-KAMUYA OLAN ERTELENMİŞ VEYA TAKSİTLENDİRİLMİŞ BORÇLAR"
+  },
+  {
+    "code": "P.2.4",
+    "name": "D-ALINAN AVANSLAR"
+  },
+  {
+    "code": "P.2.4.1",
+    "name": "1-ALINAN SİPARİŞ AVANSLARI"
+  },
+  {
+    "code": "P.2.4.2",
+    "name": "2-ALINAN DİĞER AVANSLAR"
+  },
+  {
+    "code": "P.2.5",
+    "name": "E-BORÇ VE GİDER KARŞILIKLARI"
+  },
+  {
+    "code": "P.2.5.1",
+    "name": "1-KIDEM TAZMİNATI KARŞILIKLARI"
+  },
+  {
+    "code": "P.2.5.2",
+    "name": "2-DİĞER BORÇ VE GİDER KARŞILIKLARI"
+  },
+  {
+    "code": "P.2.6",
+    "name": "F-GELECEK YILLARA AİT GELİRLER VE GİDER TAHAKKUKLARI"
+  },
+  {
+    "code": "P.2.6.1",
+    "name": "1-GELECEK YILLARA AİT GELİRLER"
+  },
+  {
+    "code": "P.2.6.2",
+    "name": "2-GİDER TAHAKKUKLARI"
+  },
+  {
+    "code": "P.2.7",
+    "name": "G-DİĞER UZUN VADELİ YABANCI KAYNAKLAR"
+  },
+  {
+    "code": "P.2.7.1",
+    "name": "1-GELECEK YILLARA ERTELENEN VEYA TERKİN EDİLEN KATMA DEĞER VERGİSİ"
+  },
+  {
+    "code": "P.2.7.2",
+    "name": "2-TESİSE KATILMA PAYLARI"
+  },
+  {
+    "code": "P.2.7.3",
+    "name": "3-DİĞER ÇEŞİTLİ UZUN VADELİ YABANCI KAYNAKLAR"
+  },
+  {
+    "code": "P.3",
+    "name": "III-ÖZKAYNAKLAR"
+  },
+  {
+    "code": "P.3.1",
+    "name": "A-ÖDENMİŞ SERMAYE"
+  },
+  {
+    "code": "P.3.1.1",
+    "name": "1-SERMAYE"
+  },
+  {
+    "code": "P.3.1.2",
+    "name": "2-ÖDENMEMİŞ SERMAYE (-)"
+  },
+  {
+    "code": "P.3.1.3",
+    "name": "3-SERMAYE DÜZELTMESİ OLUMLU FARKLARI"
+  },
+  {
+    "code": "P.3.1.4",
+    "name": "4-SERMAYE DÜZELTMESİ OLUMSUZ FARKLARI (-)"
+  },
+  {
+    "code": "P.3.2",
+    "name": "B-SERMAYE YEDEKLERİ"
+  },
+  {
+    "code": "P.3.2.1",
+    "name": "1-HİSSE SENETLERİ İHRAÇ PRİMLERİ"
+  },
+  {
+    "code": "P.3.2.2",
+    "name": "2-HİSSE SENETLERİ İPTAL KARLARI"
+  },
+  {
+    "code": "P.3.2.3",
+    "name": "3-M.D.V. YENİDEN DEĞERLEME ARTIŞLARI"
+  },
+  {
+    "code": "P.3.2.4",
+    "name": "4-İŞTİRAKLER YENİDEN DEĞERLEME ARTIŞLARI"
+  },
+  {
+    "code": "P.3.2.5",
+    "name": "5-MALİYET BEDELİ ARTIŞ FONDU"
+  },
+  {
+    "code": "P.3.2.6",
+    "name": "6-KAYDA ALINAN ENFLASYON DÜZELTME ÖZEL KARŞILIK HESABI"
+  },
+  {
+    "code": "P.3.2.7",
+    "name": "7-DEMİRBAŞ MAKİNE VE TEÇHİZAT ÖZEL KARŞILIK HESABI"
+  },
+  {
+    "code": "P.3.2.8",
+    "name": "8-DİĞER SERMAYE YEDEKLERİ"
+  },
+  {
+    "code": "P.3.3",
+    "name": "C-KAR YEDEKLERİ"
+  },
+  {
+    "code": "P.3.3.1",
+    "name": "1-YASAL YEDEKLER"
+  },
+  {
+    "code": "P.3.3.2",
+    "name": "2-STATÜ YEDEKLERİ"
+  },
+  {
+    "code": "P.3.3.3",
+    "name": "3-OLAĞANÜSTÜ YEDEKLER"
+  },
+  {
+    "code": "P.3.3.4",
+    "name": "4-DİĞER KAR YEDEKLERİ"
+  },
+  {
+    "code": "P.3.3.5",
+    "name": "5-ÖZEL FONLAR"
+  },
+  {
+    "code": "P.3.4",
+    "name": "D-GEÇMİŞ YILLAR KARLARI"
+  },
+  {
+    "code": "P.3.4.1",
+    "name": "1-GEÇMİŞ YILLAR KARLARI"
+  },
+  {
+    "code": "P.3.5",
+    "name": "E-GEÇMİŞ YILLAR ZARARLARI (-)"
+  },
+  {
+    "code": "P.3.5.1",
+    "name": "1-GEÇMİŞ YILLAR ZARARLARI"
+  },
+  {
+    "code": "P.3.6",
+    "name": "F-DÖNEM NET KARI (ZARARI)"
+  },
+  {
+    "code": "P.3.6.1",
+    "name": "1-DÖNEM NET KARI"
+  },
+  {
+    "code": "P.3.6.2",
+    "name": "2-DÖNEM NET ZARARI (-)"
+  }
+]

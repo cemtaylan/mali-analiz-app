@@ -1,0 +1,35 @@
+{
+  "company_info": {
+    "name": "Test Demo Şirketi",
+    "tax_number": "1111111111",
+    "email": "demo@test.com",
+    "industry": "Test"
+  },
+  "detected_data": {
+    "company_name": "Test Demo Şirketi",
+    "tax_number": "1111111111",
+    "items": [
+      {
+        "definition": "100",
+        "2023": "1000000",
+        "2024": "1200000",
+        "2024_E": "1250000"
+      },
+      {
+        "definition": "120",
+        "2023": "500000",
+        "2024": "600000"
+      },
+      {
+        "definition": "300",
+        "2023": "800000",
+        "2024": "900000"
+      }
+    ]
+  },
+  "analysis_metadata": {
+    "filename": "demo_test.pdf",
+    "year": 2024,
+    "period": "YILLIK"
+  }
+} 
