@@ -2795,16 +2795,21 @@ app.get("/balance-sheets/:id", (req, res) => {
             // Format 2: {balance_data: [...]}
             items = parsedData.balance_data;
             console.log('✅ Format 2 - balance_data kullanıldı:', items.length);
+          } else if (parsedData.detected_data && parsedData.detected_data.items) {
+            // Format 3: {detected_data: {items: [...]}} - Preview format
+            items = parsedData.detected_data.items;
+            console.log('✅ Format 3 - detected_data.items kullanıldı:', items.length);
           } else if (Array.isArray(parsedData)) {
-            // Format 3: doğrudan array
+            // Format 4: doğrudan array
             items = parsedData;
-            console.log('✅ Format 3 - doğrudan array kullanıldı:', items.length);
+            console.log('✅ Format 4 - doğrudan array kullanıldı:', items.length);
           } else if (parsedData.items && Array.isArray(parsedData.items)) {
-            // Format 4: {items: [...]}
+            // Format 5: {items: [...]}
             items = parsedData.items;
-            console.log('✅ Format 4 - items array kullanıldı:', items.length);
+            console.log('✅ Format 5 - items array kullanıldı:', items.length);
           } else {
             console.warn('⚠️ Bilinmeyen raw_pdf_data formatı:', Object.keys(parsedData));
+            console.warn('⚠️ Veri örneği:', JSON.stringify(parsedData, null, 2).substring(0, 500));
           }
         } catch (parseError) {
           console.error('❌ Raw PDF data parse hatası:', parseError);
@@ -2942,16 +2947,14 @@ app.post("/balance-sheets/save-from-preview", async (req, res) => {
               balance_sheet_id,
               account_code,
               account_name,
-              description,
               definition,
               year_data,
               created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+            ) VALUES (?, ?, ?, ?, ?, datetime('now'))
           `, [
             balanceSheetId,
             item.definition || 'N/A',
             item.account_name || item.description || 'N/A',
-            item.description || item.account_name || 'N/A',
             item.definition || 'eşleşmedi',
             JSON.stringify(yearData)
           ], function(err) {

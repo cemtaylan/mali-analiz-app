@@ -98,14 +98,18 @@ const BalanceSheetDetail = () => {
               // Format 2: {balance_data: [...]}
               detectedItems = parsedData.balance_data;
               console.log('✅ Format 2 - balance_data kullanıldı:', detectedItems.length);
+            } else if (parsedData.detected_data && parsedData.detected_data.items) {
+              // Format 3: {detected_data: {items: [...]}} - Preview format
+              detectedItems = parsedData.detected_data.items;
+              console.log('✅ Format 3 - detected_data.items kullanıldı:', detectedItems.length);
             } else if (Array.isArray(parsedData)) {
-              // Format 3: doğrudan array
+              // Format 4: doğrudan array
               detectedItems = parsedData;
-              console.log('✅ Format 3 - doğrudan array kullanıldı:', detectedItems.length);
+              console.log('✅ Format 4 - doğrudan array kullanıldı:', detectedItems.length);
             } else if (parsedData.items && Array.isArray(parsedData.items)) {
-              // Format 4: {items: [...]}
+              // Format 5: {items: [...]}
               detectedItems = parsedData.items;
-              console.log('✅ Format 4 - items array kullanıldı:', detectedItems.length);
+              console.log('✅ Format 5 - items array kullanıldı:', detectedItems.length);
             } else {
               console.warn('⚠️ Bilinmeyen raw_pdf_data formatı:', Object.keys(parsedData));
             }

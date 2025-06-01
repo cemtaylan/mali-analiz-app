@@ -16,6 +16,8 @@ import BalanceSheets from './pages/BalanceSheets';
 import BalanceSheetDetail from './pages/BalanceSheetDetail';
 import BalanceSheetEdit from './pages/BalanceSheetEdit';
 import BalanceSheetWithPlan from './pages/BalanceSheetWithPlan';
+import BalanceSheetPreview from './pages/BalanceSheetPreview';
+import BalanceSheetPreviewEdit from './pages/BalanceSheetPreviewEdit';
 import MultiBalanceAnalysis from './pages/MultiBalanceAnalysis';
 import Reports from './pages/Reports';
 import Profile from './pages/Profile';
@@ -137,6 +139,38 @@ function App() {
         <ProtectedRoute>
           <DashboardLayout>
             <BalanceSheetEdit />
+          </DashboardLayout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/balance-sheets/preview" element={
+        <ProtectedRoute>
+          <DashboardLayout>
+            <BalanceSheetPreview />
+          </DashboardLayout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/balance-sheets/preview/edit" element={
+        <ProtectedRoute>
+          <DashboardLayout>
+            <BalanceSheetPreviewEdit />
+          </DashboardLayout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/balance-sheets/:id/preview" element={
+        <ProtectedRoute>
+          <DashboardLayout>
+            <BalanceSheetPreview />
+          </DashboardLayout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/balance-sheets/:id/preview/edit" element={
+        <ProtectedRoute>
+          <DashboardLayout>
+            <BalanceSheetPreviewEdit />
           </DashboardLayout>
         </ProtectedRoute>
       } />

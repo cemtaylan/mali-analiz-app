@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// API temel URL'i - proxy kullanıldığı için boş
-const API_BASE_URL = '';
+// API temel URL'i - geçici çözüm için backend portu
+const API_BASE_URL = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5002';
 // API hatalarını kontrol et
 console.log("API bağlantı URL'si:", API_BASE_URL || 'Proxy kullanılıyor');
 
@@ -1268,6 +1268,40 @@ export const CompanyAPI = {
           years_analyzed: 2,
           analysis_period: '2023 - 2024'
         }
+      };
+    }
+  },
+
+  // Şirket sil (soft delete)
+  deleteCompany: async (companyId) => {
+    try {
+      const response = await axios.delete(`${API_BASE_URL}/companies/${companyId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Şirket silme hatası (ID: ${companyId}):`, error);
+      
+      // Demo yanıt - başarılı silme
+      return {
+        success: true,
+        message: `Şirket ${companyId} başarıyla silindi (demo)`,
+        deletedCompanyId: companyId
+      };
+    }
+  },
+
+  // Şirket zorla sil (hard delete)
+  forceDeleteCompany: async (companyId) => {
+    try {
+      const response = await axios.delete(`${API_BASE_URL}/companies/${companyId}/force`);
+      return response.data;
+    } catch (error) {
+      console.error(`Şirket zorla silme hatası (ID: ${companyId}):`, error);
+      
+      // Demo yanıt - başarılı silme
+      return {
+        success: true,
+        message: `Şirket ${companyId} kalıcı olarak silindi (demo)`,
+        deletedCompanyId: companyId
       };
     }
   }

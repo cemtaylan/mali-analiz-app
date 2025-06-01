@@ -70,13 +70,52 @@ const BalanceSheetEdit = () => {
         if (detailResponse.balance_sheet.raw_pdf_data) {
           try {
             const parsedData = JSON.parse(detailResponse.balance_sheet.raw_pdf_data);
-            pdfItems = parsedData.items || [];
+            console.log('📄 Raw PDF data parse edildi:', parsedData);
+            
+            // Farklı formatları handle et
+            if (parsedData.items && parsedData.items.balance_data) {
+              // Format 1: {items: {balance_data: [...]}}
+              pdfItems = parsedData.items.balance_data;
+              console.log('✅ Format 1 - items.balance_data kullanıldı:', pdfItems.length);
+            } else if (parsedData.balance_data) {
+              // Format 2: {balance_data: [...]}
+              pdfItems = parsedData.balance_data;
+              console.log('✅ Format 2 - balance_data kullanıldı:', pdfItems.length);
+            } else if (parsedData.detected_data && parsedData.detected_data.items) {
+              // Format 3: {detected_data: {items: [...]}} - Preview format
+              pdfItems = parsedData.detected_data.items;
+              console.log('✅ Format 3 - detected_data.items kullanıldı:', pdfItems.length);
+            } else if (Array.isArray(parsedData)) {
+              // Format 4: doğrudan array
+              pdfItems = parsedData;
+              console.log('✅ Format 4 - doğrudan array kullanıldı:', pdfItems.length);
+            } else if (parsedData.items && Array.isArray(parsedData.items)) {
+              // Format 5: {items: [...]}
+              pdfItems = parsedData.items;
+              console.log('✅ Format 5 - items array kullanıldı:', pdfItems.length);
+            } else {
+              console.warn('⚠️ Bilinmeyen raw_pdf_data formatı:', Object.keys(parsedData));
+              pdfItems = [];
+            }
           } catch (parseError) {
             console.error('Raw PDF data parse hatası:', parseError);
+            pdfItems = [];
           }
         }
         
         setItems(pdfItems);
+        
+        // Debug: Veri yapısını kontrol et
+        console.log('📊 Edit sayfası - Items yüklendi:', pdfItems.length);
+        if (pdfItems.length > 0) {
+          console.log('📊 İlk item örneği:', pdfItems[0]);
+          console.log('📊 İlk item keys:', Object.keys(pdfItems[0]));
+          const yearKeys = Object.keys(pdfItems[0]).filter(key => /^\d{4}(_E)?$/.test(key));
+          console.log('📊 Yıl alanları:', yearKeys);
+          if (yearKeys.length > 0) {
+            console.log('📊 İlk yıl verisi örneği:', pdfItems[0][yearKeys[0]]);
+          }
+        }
         
         // Hasılat verilerini kontrol et (kullanılmıyor ama hata vermemesi için)
         const hasInflation = pdfItems.some(item => item.inflation_adjusted_amount && item.inflation_adjusted_amount > 0);
@@ -213,13 +252,25 @@ const BalanceSheetEdit = () => {
 
   // Hiyerarşi toplamlarını hesapla (bottom-up)
   const calculateHierarchyTotals = (nodes) => {
+    // İlk item'dan yıl alanlarını bul
+    const getYearFields = () => {
+      if (items && items.length > 0) {
+        const sampleItem = items[0];
+        return Object.keys(sampleItem).filter(key => /^\d{4}(_E)?$/.test(key));
+      }
+      return ['2020', '2021']; // fallback
+    };
+    
+    const yearFields = getYearFields();
+    console.log('📊 Hiyerarşi hesaplama için yıl alanları:', yearFields);
+    
     nodes.forEach(node => {
       if (node.children && node.children.length > 0) {
         // Önce çocukları hesapla
         calculateHierarchyTotals(node.children);
         
         // Sonra bu node'un toplamını hesapla
-        ['2020', '2021'].forEach(year => {
+        yearFields.forEach(year => {
           let total = 0;
           let hasValidChildren = false;
           
@@ -278,67 +329,42 @@ const BalanceSheetEdit = () => {
   // Kalem güncelleme
   const saveItem = async () => {
     try {
-      // Değerleri sayısal formata dönüştür
-      const currentValue2020 = editingItem.current_value_2020;
-      const currentValue2021 = editingItem.current_value_2021;
-
-      // PDF formatından sayısal formata dönüştür
-      let numeric2020 = null;
-      let numeric2021 = null;
-
-      if (currentValue2020 && currentValue2020 !== '-') {
-        if (typeof currentValue2020 === 'string' && currentValue2020.includes('.') && currentValue2020.includes(',')) {
-          // Türkçe format: "3.882.837,70" -> 3882837.70
-          numeric2020 = parseFloat(currentValue2020.replace(/\./g, '').replace(',', '.'));
-        } else {
-          numeric2020 = parseFloat(currentValue2020);
+      // İlk item'dan yıl alanlarını bul
+      const getYearFields = () => {
+        if (items && items.length > 0) {
+          const sampleItem = items[0];
+          return Object.keys(sampleItem).filter(key => /^\d{4}(_E)?$/.test(key));
         }
-      }
-
-      if (currentValue2021 && currentValue2021 !== '-') {
-        if (typeof currentValue2021 === 'string' && currentValue2021.includes('.') && currentValue2021.includes(',')) {
-          // Türkçe format: "13.360.378,91" -> 13360378.91
-          numeric2021 = parseFloat(currentValue2021.replace(/\./g, '').replace(',', '.'));
-        } else {
-          numeric2021 = parseFloat(currentValue2021);
-        }
-      }
-
-      console.log('Güncelleme verileri:', {
-        itemId: editingItem.id,
-        definition: editingItem.definition,
-        raw2020: currentValue2020,
-        raw2021: currentValue2021,
-        numeric2020,
-        numeric2021
-      });
+        return ['2020', '2021']; // fallback
+      };
+      
+      const yearFields = getYearFields();
 
       // Items array'ini güncelle
-        const updatedItems = items.map(item => {
-          if (item.id === editingItem.id) {
-            return {
-              ...item,
-            '2020': currentValue2020,
-            '2021': currentValue2021,
-              is_edited: true
-            };
-          }
-          return item;
-        });
-        
-        setItems(updatedItems);
-        setEditingItem(null);
-        
+      const updatedItems = items.map(item => {
+        if (item.id === editingItem.id) {
+          const updatedItem = { ...item, is_edited: true };
+          yearFields.forEach(year => {
+            updatedItem[year] = editingItem[`current_value_${year}`] || '';
+          });
+          return updatedItem;
+        }
+        return item;
+      });
+      
+      setItems(updatedItems);
+      setEditingItem(null);
+      
       // Hiyerarşileri yeniden hesapla (üst seviye hesaplar otomatik güncellenecek)
       console.log('🔄 Hiyerarşi yeniden hesaplanıyor...');
-        
-        // Başarı mesajı göster
+      
+      // Başarı mesajı göster
       setSuccessMessage(`${editingItem.definition} hesabı başarıyla güncellendi - Üst seviye hesaplar otomatik hesaplandı`);
-        
-        // 3 saniye sonra mesajı kaldır
-        setTimeout(() => {
-          setSuccessMessage('');
-        }, 3000);
+      
+      // 3 saniye sonra mesajı kaldır
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 3000);
 
     } catch (error) {
       console.error("Kalem güncellenirken hata:", error);
@@ -450,13 +476,26 @@ const BalanceSheetEdit = () => {
       return;
     }
 
+    // İlk item'dan yıl alanlarını bul
+    const getYearFields = () => {
+      if (items && items.length > 0) {
+        const sampleItem = items[0];
+        return Object.keys(sampleItem).filter(key => /^\d{4}(_E)?$/.test(key));
+      }
+      return ['2020', '2021']; // fallback
+    };
+    
+    const yearFields = getYearFields();
+    const primaryYear = yearFields[0] || '2020'; // İlk yılı kullan
+    console.log('📊 Toplam hesaplama için yıl alanları:', yearFields, '- Primary year:', primaryYear);
+
     // Hiyerarşiden ana kategori toplamlarını hesapla
     const calculateTotalFromHierarchy = (hierarchy) => {
       let total = 0;
       
       hierarchy.forEach(mainCategory => {
         // Ana kategori seviyesindeki değerleri topla
-        const valueStr = mainCategory['2020'] || '0';
+        const valueStr = mainCategory[primaryYear] || '0';
         if (valueStr !== '-') {
           let cleanValue;
           if (typeof valueStr === 'string' && valueStr.includes('.') && valueStr.includes(',')) {
@@ -537,10 +576,25 @@ const BalanceSheetEdit = () => {
   
   // Düzenleme modunu aç
   const startEditing = (item) => {
+    // İlk item'dan yıl alanlarını bul
+    const getYearFields = () => {
+      if (items && items.length > 0) {
+        const sampleItem = items[0];
+        return Object.keys(sampleItem).filter(key => /^\d{4}(_E)?$/.test(key));
+      }
+      return ['2020', '2021']; // fallback
+    };
+    
+    const yearFields = getYearFields();
+    const editingFields = {};
+    
+    yearFields.forEach(year => {
+      editingFields[`current_value_${year}`] = item[year] || '';
+    });
+    
     setEditingItem({
       ...item,
-      current_value_2020: item['2020'] || '',
-      current_value_2021: item['2021'] || ''
+      ...editingFields
     });
   };
   
@@ -558,12 +612,24 @@ const BalanceSheetEdit = () => {
     };
     setEditingItem(updatedEditingItem);
 
+    // İlk item'dan yıl alanlarını bul
+    const getYearFields = () => {
+      if (items && items.length > 0) {
+        const sampleItem = items[0];
+        return Object.keys(sampleItem).filter(key => /^\d{4}(_E)?$/.test(key));
+      }
+      return ['2020', '2021']; // fallback
+    };
+    
+    const yearFields = getYearFields();
+    const primaryYear = yearFields[0] || '2020';
+
     // Real-time preview için geçici items güncellemesi
     const tempItems = items.map(item => {
       if (item.id === editingItem.id) {
         return {
           ...item,
-          [name === 'current_value_2020' ? '2020' : '2021']: value,
+          [name === `current_value_${primaryYear}` ? primaryYear : name.replace('current_value_', '')]: value,
           is_edited: true
         };
       }
@@ -586,7 +652,7 @@ const BalanceSheetEdit = () => {
       const activeTotal = activeItems
         .filter(item => item.definition && /^A\.\d+$/.test(item.definition))
         .reduce((sum, item) => {
-          const valueStr = item['2020'] || '0';
+          const valueStr = item[primaryYear] || '0';
           if (valueStr === '-') return sum;
           
           let cleanValue;
@@ -602,7 +668,7 @@ const BalanceSheetEdit = () => {
       const passiveTotal = passiveItems
         .filter(item => item.definition && /^P\.\d+$/.test(item.definition))
         .reduce((sum, item) => {
-          const valueStr = item['2020'] || '0';
+          const valueStr = item[primaryYear] || '0';
           if (valueStr === '-') return sum;
           
           let cleanValue;
@@ -700,6 +766,17 @@ const BalanceSheetEdit = () => {
   const renderHierarchicalRows = (items, depth = 0) => {
     const rows = [];
 
+    // İlk item'dan yıl alanlarını bul
+    const getYearFields = () => {
+      if (items && items.length > 0) {
+        const sampleItem = items[0];
+        return Object.keys(sampleItem).filter(key => /^\d{4}(_E)?$/.test(key));
+      }
+      return ['2020', '2021']; // fallback
+    };
+    
+    const yearFields = getYearFields();
+
     items.forEach(item => {
       let fontWeight = 'font-normal';
       let bgColor = 'bg-white';
@@ -730,14 +807,40 @@ const BalanceSheetEdit = () => {
       const canEdit = isEditable(item);
       
       const isMainHeading = /^[IVX]+\./.test(item.description || '');
+      
+      // 3 basamaklı kategori kontrolü (A.1.1, P.2.3 formatı)
+      const isLevel2Category = /^[AP]\.\d+\.\d+$/.test(item.definition || '');
+      
       const displayDescription = isMainHeading ? 
         (item.description || 'Açıklama yok').toUpperCase() : 
+        isLevel2Category ?
+        (item.description || 'Açıklama yok').toUpperCase() :
         formatAccountName(item.description || 'Açıklama yok');
 
       // Otomatik hesaplanan değerleri göster
       const statusColor = item.isCalculated ? 'bg-orange-500' : 
                          item.is_edited ? 'bg-blue-500' : 
                          item.definition && item.definition !== 'eşleşmedi' ? 'bg-green-500' : 'bg-gray-400';
+
+      // Dinamik yıl kolonları için cell'leri oluştur
+      const yearCells = yearFields.map(year => (
+        <td key={year} className="px-6 py-3 whitespace-nowrap text-right w-1/6">
+          {editingItem && editingItem.id === item.id && canEdit ? (
+            <input
+              type="text"
+              name={`current_value_${year}`}
+              value={editingItem[`current_value_${year}`] || ''}
+              onChange={handleInputChange}
+              className="w-full p-1 border border-gray-300 rounded text-right"
+              placeholder="0,00"
+            />
+          ) : (
+            <div className={`${textSize} text-gray-900 font-mono ${fontWeight} ${item.isCalculated ? 'text-orange-600' : ''}`}>
+              {item[year] || '-'}
+            </div>
+          )}
+        </td>
+      ));
 
       rows.push(
         <tr 
@@ -771,38 +874,7 @@ const BalanceSheetEdit = () => {
               </div>
             </div>
           </td>
-          <td className="px-6 py-3 whitespace-nowrap text-right w-1/6">
-            {editingItem && editingItem.id === item.id && canEdit ? (
-              <input
-                type="text"
-                name="current_value_2020"
-                value={editingItem.current_value_2020}
-                onChange={handleInputChange}
-                className="w-full p-1 border border-gray-300 rounded text-right"
-                placeholder="0,00"
-              />
-            ) : (
-              <div className={`${textSize} text-gray-900 font-mono ${fontWeight} ${item.isCalculated ? 'text-orange-600' : ''}`}>
-                {item['2020'] || '-'}
-              </div>
-            )}
-          </td>
-          <td className="px-6 py-3 whitespace-nowrap text-right w-1/6">
-            {editingItem && editingItem.id === item.id && canEdit ? (
-              <input
-                type="text"
-                name="current_value_2021"
-                value={editingItem.current_value_2021}
-                onChange={handleInputChange}
-                className="w-full p-1 border border-gray-300 rounded text-right"
-                placeholder="0,00"
-              />
-            ) : (
-              <div className={`${textSize} text-gray-900 font-mono ${fontWeight} ${item.isCalculated ? 'text-orange-600' : ''}`}>
-                {item['2021'] || '-'}
-              </div>
-            )}
-          </td>
+          {yearCells}
           <td className="px-6 py-3 text-center">
             {editingItem && editingItem.id === item.id ? (
               <div className="flex justify-center space-x-2">
@@ -1074,12 +1146,23 @@ const BalanceSheetEdit = () => {
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                     Hesap Adı
                   </th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider w-1/6">
-                    2020
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider w-1/6">
-                    2021
-                  </th>
+                  {(() => {
+                    // İlk item'dan yıl alanlarını bul
+                    const getYearFields = () => {
+                      if (items && items.length > 0) {
+                        const sampleItem = items[0];
+                        return Object.keys(sampleItem).filter(key => /^\d{4}(_E)?$/.test(key));
+                      }
+                      return ['2020', '2021']; // fallback
+                    };
+                    
+                    const yearFields = getYearFields();
+                    return yearFields.map(year => (
+                      <th key={year} scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider w-1/6">
+                        {year}
+                      </th>
+                    ));
+                  })()}
                   <th scope="col" className="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider">
                     İşlemler
                   </th>
