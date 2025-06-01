@@ -980,7 +980,7 @@ export const CompanyAPI = {
   // VKN ile şirket kontrol et
   checkCompanyByTaxNumber: async (taxNumber) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/companies/check/${taxNumber}`);
+      const response = await axios.get(`${API_BASE_URL}/companies/check-tax/${taxNumber}`);
       return response.data;
     } catch (error) {
       console.error(`VKN kontrolünde (${taxNumber}) hata:`, error);
@@ -1032,14 +1032,185 @@ export const CompanyAPI = {
       const demoId = Math.floor(Math.random() * 1000) + 10; // Rastgele demo ID
       return {
         id: demoId,
-        name: `${companyData.first_name} ${companyData.last_name}`,
+        name: companyData.title || `${companyData.first_name || ''} ${companyData.last_name || ''}`.trim() || 'Demo Şirket',
         tax_number: companyData.tax_number,
         email: companyData.email,
         trade_registry_number: companyData.trade_registry_number,
-        last_name: companyData.last_name,
-        first_name: companyData.first_name,
         address: companyData.address || "",
-        industry: companyData.industry || ""
+        industry: companyData.industry || "",
+        phone: companyData.phone || "",
+        establishment_date: companyData.establishment_date || "",
+        activity_main_category: companyData.activity_main_category || "",
+        activity_subcategory: companyData.activity_subcategory || "",
+        created_at: new Date().toISOString().split('T')[0]
+      };
+    }
+  },
+
+  // Şirket detaylarını getir
+  getCompanyById: async (companyId) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/companies/${companyId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Şirket detayları yüklenirken hata (ID: ${companyId}):`, error);
+      
+      // Demo şirket verisi - daha geniş ID aralığı destekleyerek
+      const demoCompanies = [
+        { 
+          id: 1, 
+          name: "ABC Şirketi", 
+          tax_number: "1234567890", 
+          email: "info@abc.com", 
+          trade_registry_number: "ABC-123", 
+          address: "İstanbul, Türkiye",
+          phone: "0212 123 45 67",
+          industry: "Teknoloji",
+          establishment_date: "2010-01-01",
+          created_at: "2024-01-01"
+        },
+        { 
+          id: 2, 
+          name: "XYZ Holding", 
+          tax_number: "0987654321", 
+          email: "info@xyz.com", 
+          trade_registry_number: "XYZ-456", 
+          address: "Ankara, Türkiye",
+          phone: "0312 987 65 43",
+          industry: "Finans",
+          establishment_date: "2008-05-15",
+          created_at: "2024-01-02"
+        },
+        { 
+          id: 3, 
+          name: "Örnek Anonim Şirketi", 
+          tax_number: "5555555555", 
+          email: "info@ornek.com", 
+          trade_registry_number: "ORNEK-789", 
+          address: "İzmir, Türkiye",
+          phone: "0232 555 55 55",
+          industry: "Üretim",
+          establishment_date: "2015-12-10",
+          created_at: "2024-01-03"
+        },
+        { 
+          id: 4, 
+          name: "MEMSAN MAKİNA İMALAT SANAYİ VE TİCARET LTD.ŞTİ.", 
+          tax_number: "6140087281", 
+          email: "info@memsanmakina.com", 
+          trade_registry_number: "TEKKEKÖY-328", 
+          address: "Samsun, Türkiye",
+          phone: "0362 123 45 67",
+          industry: "Makina",
+          establishment_date: "2005-03-20",
+          created_at: "2024-01-04"
+        }
+      ];
+      
+      let demoCompany = demoCompanies.find(company => company.id === parseInt(companyId));
+      
+      // Eğer ID demo listesinde yoksa, dinamik demo şirket oluştur
+      if (!demoCompany && parseInt(companyId) > 4) {
+        console.log(`ID ${companyId} için dinamik demo şirket oluşturuluyor`);
+        
+        // Yeni eklenen şirketler için varsayılan demo verisi
+        demoCompany = {
+          id: parseInt(companyId),
+          name: `Demo Şirket ${companyId}`,
+          tax_number: `${String(parseInt(companyId) * 123456789).slice(0, 10).padEnd(10, '0')}`,
+          email: `demo${companyId}@example.com`,
+          trade_registry_number: `DEMO-${companyId}`,
+          address: "Demo Mahallesi, Demo Caddesi No:123, İstanbul",
+          phone: "0212 555 00 " + String(companyId).padStart(2, '0'),
+          industry: "Demo Sektör",
+          establishment_date: "2020-01-01",
+          activity_main_category: "C",
+          activity_subcategory: "15",
+          activity_notes: "Demo şirket faaliyet notları",
+          sector_size_dynamics: "Demo sektör dinamikleri",
+          competitive_position_market_share: "Demo rekabet pozisyonu",
+          income_expenses_tax_compliance: "Demo gelir gider vergi uyumu",
+          regulation_monitoring: "Demo mevzuat takibi",
+          sector_notes: "Demo sektör notları",
+          created_at: new Date().toISOString().split('T')[0]
+        };
+      }
+      
+      if (demoCompany) {
+        console.log(`Demo şirket verisi döndürülüyor: ${demoCompany.name} (ID: ${companyId})`);
+        return demoCompany;
+      } else {
+        console.log(`Demo şirket bulunamadı: ID ${companyId}`);
+        throw new Error(`Şirket bulunamadı: ID ${companyId}`);
+      }
+    }
+  },
+
+  // Şirketin bilanço geçmişini getir
+  getCompanyBalanceSheets: async (companyId) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/companies/${companyId}/balance-sheets`);
+      return response.data;
+    } catch (error) {
+      console.error(`Şirket bilanço geçmişi yüklenirken hata (ID: ${companyId}):`, error);
+      
+      // Demo bilanço geçmişi
+      return [
+        {
+          id: 1,
+          year: 2024,
+          period: 'YILLIK',
+          creation_date: '2024-12-31',
+          analysis_status: 'completed',
+          pdf_filename: 'bilanço_2024.pdf',
+          currency: 'TL',
+          notes: '2024 yılsonu bilançosu'
+        },
+        {
+          id: 2,
+          year: 2023,
+          period: 'YILLIK', 
+          creation_date: '2023-12-31',
+          analysis_status: 'completed',
+          pdf_filename: 'bilanço_2023.pdf',
+          currency: 'TL',
+          notes: '2023 yılsonu bilançosu'
+        },
+        {
+          id: 3,
+          year: 2024,
+          period: 'Q3',
+          creation_date: '2024-09-30',
+          analysis_status: 'completed', 
+          pdf_filename: 'bilanço_2024_Q3.pdf',
+          currency: 'TL',
+          notes: '2024 3. çeyrek bilançosu'
+        }
+      ];
+    }
+  },
+
+  // Şirket özet bilgilerini getir
+  getCompanySummary: async (companyId) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/companies/${companyId}/summary`);
+      return response.data;
+    } catch (error) {
+      console.error(`Şirket özet bilgileri yüklenirken hata (ID: ${companyId}):`, error);
+      
+      // Demo özet bilgiler
+      return {
+        company_name: `Demo Şirket ${companyId}`,
+        tax_number: `${String(parseInt(companyId) * 123456789).slice(0, 10).padEnd(10, '0')}`,
+        establishment_date: '2020-01-01',
+        industry: 'Demo Sektör',
+        registration_date: new Date().toISOString().split('T')[0],
+        statistics: {
+          total_balance_sheets: 3,
+          latest_year: 2024,
+          years_analyzed: 2,
+          analysis_period: '2023 - 2024'
+        }
       };
     }
   }

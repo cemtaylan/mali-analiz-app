@@ -33,8 +33,6 @@ function initializeDatabase() {
   db.run(`
     CREATE TABLE IF NOT EXISTS companies (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      first_name TEXT NOT NULL,
-      last_name TEXT NOT NULL,
       name TEXT NOT NULL,
       tax_number TEXT UNIQUE NOT NULL,
       email TEXT,
@@ -42,7 +40,17 @@ function initializeDatabase() {
       address TEXT,
       industry TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      phone TEXT,
+      establishment_date TEXT,
+      activity_main_category TEXT,
+      activity_subcategory TEXT,
+      activity_notes TEXT,
+      sector_size_dynamics TEXT,
+      competitive_position_market_share TEXT,
+      income_expenses_tax_compliance TEXT,
+      regulation_monitoring TEXT,
+      sector_notes TEXT
     )
   `, (err) => {
     if (err) {
@@ -292,14 +300,30 @@ function initializeDatabase() {
       console.log('Sektör benchmarkları tablosu hazır');
     }
   });
+
+  // Şirket ortakları tablosu
+  db.run(`
+    CREATE TABLE IF NOT EXISTS company_partners (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      company_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      share_percentage DECIMAL(5,2) NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (company_id) REFERENCES companies (id) ON DELETE CASCADE
+    )
+  `, (err) => {
+    if (err) {
+      console.error('Şirket ortakları tablosu oluşturma hatası:', err.message);
+    } else {
+      console.log('Şirket ortakları tablosu hazır');
+    }
+  });
 }
 
 // Demo şirketleri ekle
 function addDemoCompanies() {
   const demoCompanies = [
     {
-      first_name: 'ABC',
-      last_name: 'Şirketi',
       name: 'ABC Şirketi',
       tax_number: '1234567890',
       email: 'info@abc.com',
@@ -308,8 +332,6 @@ function addDemoCompanies() {
       industry: 'Teknoloji'
     },
     {
-      first_name: 'XYZ',
-      last_name: 'Holding',
       name: 'XYZ Holding',
       tax_number: '0987654321',
       email: 'contact@xyz.com',
@@ -318,8 +340,6 @@ function addDemoCompanies() {
       industry: 'Finans'
     },
     {
-      first_name: 'MEMSAN',
-      last_name: 'Makina',
       name: 'MEMSAN MAKİNA İMALAT SANAYİ VE TİCARET LTD.ŞTİ.',
       tax_number: '6140087281',
       email: 'info@memsan.com',
@@ -335,9 +355,9 @@ function addDemoCompanies() {
         console.error('Demo şirket kontrol hatası:', err.message);
       } else if (!row) {
         db.run(`
-          INSERT INTO companies (first_name, last_name, name, tax_number, email, trade_registry_number, address, industry)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `, [company.first_name, company.last_name, company.name, company.tax_number, company.email, company.trade_registry_number, company.address, company.industry], 
+          INSERT INTO companies (name, tax_number, email, trade_registry_number, address, industry)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `, [company.name, company.tax_number, company.email, company.trade_registry_number, company.address, company.industry], 
         function(err) {
           if (err) {
             console.error('Demo şirket ekleme hatası:', err.message);
@@ -1059,12 +1079,29 @@ app.post("/companies", (req, res) => {
   try {
     console.log("Yeni şirket oluşturma isteği:", req.body);
     
-    const { first_name, last_name, tax_number, email, trade_registry_number, address, industry } = req.body;
+    const { 
+      title, 
+      tax_number, 
+      email, 
+      trade_registry_number, 
+      address, 
+      phone,
+      establishment_date,
+      activity_main_category,
+      activity_subcategory,
+      activity_notes,
+      sector_size_dynamics,
+      competitive_position_market_share,
+      income_expenses_tax_compliance,
+      regulation_monitoring,
+      sector_notes,
+      partners 
+    } = req.body;
     
     // Basit validasyon
-    if (!first_name || !last_name || !tax_number) {
+    if (!title || !tax_number) {
       return res.status(400).json({ 
-        error: "Ad, soyad ve vergi numarası gereklidir" 
+        error: "Şirket unvanı ve vergi numarası gereklidir" 
       });
     }
     
@@ -1074,8 +1111,6 @@ app.post("/companies", (req, res) => {
         error: "Vergi numarası 10 haneli sayısal değer olmalıdır" 
       });
     }
-    
-    const companyName = `${first_name} ${last_name}`;
     
     // Önce aynı VKN'nin var olup olmadığını kontrol et
     db.get('SELECT id FROM companies WHERE tax_number = ?', [tax_number], (err, row) => {
@@ -1094,9 +1129,43 @@ app.post("/companies", (req, res) => {
       
       // Şirketi veritabanına kaydet
       db.run(`
-        INSERT INTO companies (first_name, last_name, name, tax_number, email, trade_registry_number, address, industry)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `, [first_name, last_name, companyName, tax_number, email || "", trade_registry_number || "", address || "", industry || ""], 
+        INSERT INTO companies (
+          name, 
+          tax_number, 
+          email, 
+          trade_registry_number, 
+          address, 
+          industry,
+          phone,
+          establishment_date,
+          activity_main_category,
+          activity_subcategory,
+          activity_notes,
+          sector_size_dynamics,
+          competitive_position_market_share,
+          income_expenses_tax_compliance,
+          regulation_monitoring,
+          sector_notes
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        title, // name alanına title değerini kaydet
+        tax_number, 
+        email || "", 
+        trade_registry_number || "", 
+        address || "", 
+        'Genel', // industry - varsayılan değer
+        phone || "",
+        establishment_date || "",
+        activity_main_category || "",
+        activity_subcategory || "",
+        activity_notes || "",
+        sector_size_dynamics || "",
+        competitive_position_market_share || "",
+        income_expenses_tax_compliance || "",
+        regulation_monitoring || "",
+        sector_notes || ""
+      ], 
       function(err) {
         if (err) {
           console.error('Şirket kaydetme hatası:', err.message);
@@ -1105,25 +1174,61 @@ app.post("/companies", (req, res) => {
           });
         }
         
-    const newCompany = {
+        const newCompany = {
           id: this.lastID,
-          name: companyName,
-      first_name,
-      last_name,
-      tax_number,
-      email: email || "",
-      trade_registry_number: trade_registry_number || "",
-      address: address || "",
-      industry: industry || "",
-      created_at: new Date().toISOString().split('T')[0]
-    };
-    
+          name: title,
+          title: title,
+          tax_number,
+          email: email || "",
+          trade_registry_number: trade_registry_number || "",
+          address: address || "",
+          industry: 'Genel',
+          phone: phone || "",
+          establishment_date: establishment_date || "",
+          activity_main_category: activity_main_category || "",
+          activity_subcategory: activity_subcategory || "",
+          activity_notes: activity_notes || "",
+          sector_size_dynamics: sector_size_dynamics || "",
+          competitive_position_market_share: competitive_position_market_share || "",
+          income_expenses_tax_compliance: income_expenses_tax_compliance || "",
+          regulation_monitoring: regulation_monitoring || "",
+          sector_notes: sector_notes || "",
+          created_at: new Date().toISOString().split('T')[0]
+        };
+        
+        // Ortakları kaydet
+        if (partners && Array.isArray(partners) && partners.length > 0) {
+          const partnerPromises = partners.map(partner => {
+            return new Promise((resolvePartner, rejectPartner) => {
+              db.run(`
+                INSERT INTO company_partners (company_id, name, share_percentage)
+                VALUES (?, ?, ?)
+              `, [this.lastID, partner.name, parseFloat(partner.sharePercentage)], (partnerErr) => {
+                if (partnerErr) {
+                  console.error('Ortak kaydetme hatası:', partnerErr.message);
+                  rejectPartner(partnerErr);
+                } else {
+                  resolvePartner();
+                }
+              });
+            });
+          });
+          
+          Promise.all(partnerPromises)
+            .then(() => {
+              console.log(`${partners.length} ortak başarıyla kaydedildi`);
+            })
+            .catch((partnerError) => {
+              console.error('Ortakları kaydetme hatası:', partnerError);
+            });
+        }
+        
         console.log("Şirket başarıyla kaydedildi:", newCompany);
-    
-    res.status(201).json({
-      success: true,
-      message: "Şirket başarıyla oluşturuldu",
-      company: newCompany
+        
+        res.status(201).json({
+          success: true,
+          message: "Şirket başarıyla oluşturuldu",
+          company: newCompany
         });
       });
     });
@@ -1132,6 +1237,73 @@ app.post("/companies", (req, res) => {
     console.error("Şirket oluşturma hatası:", error);
     res.status(500).json({ 
       error: `Şirket oluşturulamadı: ${error.message}` 
+    });
+  }
+});
+
+// Şirket detaylarını getir endpoint'i - ID ile (VKN kontrolünden ÖNCE olmalı)
+app.get("/companies/:companyId", (req, res) => {
+  try {
+    const { companyId } = req.params;
+    
+    // ID'nin sayısal olup olmadığını kontrol et
+    if (!/^\d+$/.test(companyId)) {
+      return res.status(400).json({ 
+        error: "Geçersiz şirket ID formatı" 
+      });
+    }
+    
+    console.log("Şirket detayları istendi:", companyId);
+    
+    db.get(`
+      SELECT id, name, tax_number, email, trade_registry_number, address, industry, 
+             phone, establishment_date, activity_main_category, activity_subcategory,
+             activity_notes, sector_size_dynamics, competitive_position_market_share,
+             income_expenses_tax_compliance, regulation_monitoring, sector_notes,
+             DATE(created_at) as created_at, DATE(updated_at) as updated_at
+      FROM companies 
+      WHERE id = ?
+    `, [companyId], (err, row) => {
+      if (err) {
+        console.error('Şirket detay sorgu hatası:', err.message);
+        return res.status(500).json({ 
+          error: `Şirket detayları alınamadı: ${err.message}` 
+        });
+      }
+      
+      if (!row) {
+        return res.status(404).json({ 
+          error: "Şirket bulunamadı" 
+        });
+      }
+      
+      // Şirket ortaklarını da getir
+      db.all(`
+        SELECT name, share_percentage
+        FROM company_partners 
+        WHERE company_id = ?
+        ORDER BY share_percentage DESC
+      `, [companyId], (partnerErr, partners) => {
+        if (partnerErr) {
+          console.error('Ortak listesi alınamadı:', partnerErr.message);
+          // Ortak hatası olsa bile şirket bilgilerini döndür
+          partners = [];
+        }
+        
+        const companyWithPartners = {
+          ...row,
+          partners: partners || []
+        };
+        
+        console.log(`Şirket detayları bulundu: ${row.name} (ID: ${companyId}), ${partners.length} ortak`);
+        res.json(companyWithPartners);
+      });
+    });
+    
+  } catch (error) {
+    console.error("Şirket detay hatası:", error);
+    res.status(500).json({ 
+      error: `Şirket detayları alınamadı: ${error.message}` 
     });
   }
 });
@@ -1295,11 +1467,9 @@ app.post("/save-analysis", async (req, res) => {
       // Yeni şirket oluştur
       companyId = await new Promise((resolve, reject) => {
         db.run(`
-          INSERT INTO companies (first_name, last_name, name, tax_number, email, industry)
-          VALUES (?, ?, ?, ?, ?, ?)
+          INSERT INTO companies (name, tax_number, email, industry)
+          VALUES (?, ?, ?, ?)
         `, [
-          company_info.first_name || '',
-          company_info.last_name || '',
           company_info.name,
           company_info.tax_number,
           company_info.email || '',
@@ -2345,10 +2515,9 @@ app.post("/balance-sheets/save-preview", async (req, res) => {
         // Yeni şirket oluştur
         companyId = await new Promise((resolve, reject) => {
           db.run(`
-            INSERT INTO companies (first_name, last_name, name, tax_number, email, industry)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO companies (name, tax_number, email, industry)
+            VALUES (?, ?, ?, ?)
           `, [
-            "", "", 
             company_info.name,
             company_info.tax_number,
             company_info.email || "",
@@ -2444,6 +2613,170 @@ app.post("/balance-sheets/save-preview", async (req, res) => {
     console.error("❌ Bilanço kaydetme hatası:", error);
     res.status(500).json({ 
       error: `Bilanço kaydedilirken hata: ${error.message}` 
+    });
+  }
+});
+
+// VKN ile şirket kontrol endpoint'i
+app.get("/companies/check-tax/:taxNumber", (req, res) => {
+  try {
+    const { taxNumber } = req.params;
+    console.log("VKN kontrolü istendi:", taxNumber);
+    
+    // VKN formatı kontrolü - 10 haneli mi?
+    const isValidFormat = /^\d{10}$/.test(taxNumber);
+    
+    if (!isValidFormat) {
+      return res.json({
+        exists: false,
+        valid: false,
+        message: "VKN geçersiz formatta. 10 haneli sayısal değer olmalıdır"
+      });
+    }
+    
+    // Veritabanında bu VKN'yi ara
+    db.get('SELECT id, name, tax_number FROM companies WHERE tax_number = ?', [taxNumber], (err, row) => {
+      if (err) {
+        console.error('VKN kontrol veritabanı hatası:', err.message);
+        return res.status(500).json({ 
+          error: `VKN kontrolü yapılamadı: ${err.message}` 
+        });
+      }
+      
+      if (row) {
+        return res.json({
+          exists: true,
+          valid: true,
+          message: "Bu VKN ile kayıtlı şirket bulundu",
+          company: row
+        });
+      } else {
+        return res.json({
+      exists: false,
+          valid: true,
+          message: "Bu VKN geçerli formatta ancak kayıtlı şirket bulunamadı"
+        });
+      }
+    });
+    
+  } catch (error) {
+    console.error("VKN kontrol hatası:", error);
+    res.status(500).json({ 
+      error: `VKN kontrolü yapılamadı: ${error.message}` 
+    });
+  }
+});
+
+// Şirketin bilanço geçmişini getir
+app.get("/companies/:companyId/balance-sheets", (req, res) => {
+  try {
+    const { companyId } = req.params;
+    
+    if (!/^\d+$/.test(companyId)) {
+      return res.status(400).json({ 
+        error: "Geçersiz şirket ID formatı" 
+      });
+    }
+    
+    console.log("Şirket bilanço geçmişi istendi:", companyId);
+    
+    db.all(`
+      SELECT id, year, period, creation_date, analysis_status, 
+             pdf_filename, currency, notes
+      FROM balance_sheets 
+      WHERE company_id = ?
+      ORDER BY year DESC, 
+               CASE period 
+                 WHEN 'YILLIK' THEN 4
+                 WHEN 'Q4' THEN 4  
+                 WHEN 'Q3' THEN 3
+                 WHEN 'Q2' THEN 2
+                 WHEN 'Q1' THEN 1
+                 ELSE 0
+               END DESC
+    `, [companyId], (err, rows) => {
+      if (err) {
+        console.error('Bilanço geçmişi sorgu hatası:', err.message);
+        return res.status(500).json({ 
+          error: `Bilanço geçmişi alınamadı: ${err.message}` 
+        });
+      }
+      
+      console.log(`${rows.length} bilanço kaydı bulundu (Şirket ID: ${companyId})`);
+      res.json(rows);
+    });
+    
+  } catch (error) {
+    console.error("Bilanço geçmişi hatası:", error);
+    res.status(500).json({ 
+      error: `Bilanço geçmişi alınamadı: ${error.message}` 
+    });
+  }
+});
+
+// Şirket özet bilgilerini getir  
+app.get("/companies/:companyId/summary", (req, res) => {
+  try {
+    const { companyId } = req.params;
+    
+    if (!/^\d+$/.test(companyId)) {
+      return res.status(400).json({ 
+        error: "Geçersiz şirket ID formatı" 
+      });
+    }
+    
+    console.log("Şirket özet bilgileri istendi:", companyId);
+    
+    // Şirket temel bilgileri ve istatistikleri
+    db.get(`
+      SELECT 
+        c.name, c.tax_number, c.establishment_date, c.industry, c.created_at,
+        COUNT(bs.id) as total_balance_sheets,
+        MAX(bs.year) as latest_year,
+        COUNT(DISTINCT bs.year) as years_count
+      FROM companies c
+      LEFT JOIN balance_sheets bs ON c.id = bs.company_id
+      WHERE c.id = ?
+      GROUP BY c.id
+    `, [companyId], (err, summary) => {
+      if (err) {
+        console.error('Şirket özet sorgu hatası:', err.message);
+        return res.status(500).json({ 
+          error: `Şirket özeti alınamadı: ${err.message}` 
+        });
+      }
+      
+      if (!summary) {
+        return res.status(404).json({ 
+          error: "Şirket bulunamadı" 
+        });
+      }
+      
+      // Ek istatistikler hesapla
+      const responseData = {
+        company_name: summary.name,
+        tax_number: summary.tax_number,
+        establishment_date: summary.establishment_date,
+        industry: summary.industry,
+        registration_date: summary.created_at,
+        statistics: {
+          total_balance_sheets: summary.total_balance_sheets,
+          latest_year: summary.latest_year,
+          years_analyzed: summary.years_count,
+          analysis_period: summary.latest_year && summary.years_count > 1 
+            ? `${summary.latest_year - summary.years_count + 1} - ${summary.latest_year}`
+            : summary.latest_year?.toString() || 'Henüz analiz yok'
+        }
+      };
+      
+      console.log(`Şirket özet bilgileri hazırlandı (ID: ${companyId})`);
+      res.json(responseData);
+    });
+    
+  } catch (error) {
+    console.error("Şirket özet hatası:", error);
+    res.status(500).json({ 
+      error: `Şirket özeti alınamadı: ${error.message}` 
     });
   }
 });

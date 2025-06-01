@@ -420,7 +420,7 @@ const Companies = () => {
         
       case 'title':
         if (!value) {
-          errors.title = 'Şirket unvanı zorunludur';
+          errors.title = 'Şirket adı zorunludur';
         } else {
           errors.title = null;
         }
@@ -779,8 +779,7 @@ const Companies = () => {
                           </svg>
                         </div>
                         <div>
-                  <div className="text-sm font-medium text-gray-900">{company.name}</div>
-                          <div className="text-sm text-gray-500">{company.title}</div>
+                          <div className="text-sm font-medium text-gray-900">{company.name}</div>
                         </div>
                       </div>
                 </td>
@@ -936,14 +935,14 @@ const Companies = () => {
                   
                     <div>
                       <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="title">
-                        Unvan *
+                        Şirket Adı *
                       </label>
                       <input
                         id="title"
                         type="text"
                         name="title"
                         className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${formErrors.title ? 'border-red-500' : 'border-gray-300'}`}
-                        placeholder="MEMSAN MAKİNA İMALAT SANAYİ VE TİCARET LTD.ŞTİ."
+                        placeholder="Şirket adını giriniz (örn: ABC LTD. ŞTİ.)"
                         value={formData.title}
                         onChange={handleInputChange}
                         required

@@ -51,6 +51,7 @@ const CompanyDetail = () => {
   const { id } = useParams();
   const [company, setCompany] = useState(null);
   const [balanceSheets, setBalanceSheets] = useState([]);
+  const [companySummary, setCompanySummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showQuickActions, setShowQuickActions] = useState(false);
 
@@ -61,19 +62,21 @@ const CompanyDetail = () => {
   const fetchCompanyDetails = async () => {
     try {
       setLoading(true);
-      // API'den şirket detaylarını getir
-      const companyData = await CompanyAPI.getCompanyById(id);
-      console.log('Şirket detayı alındı:', companyData);
       
-      // Demo bilanço verileri (API olmadığı için)
-      const demoBalanceSheets = [
-        { id: 1, year: 2024, period: 'Q1', creation_date: '2024-03-31', status: 'Onaylandı' },
-        { id: 2, year: 2023, period: 'YILLIK', creation_date: '2023-12-31', status: 'Onaylandı' },
-        { id: 3, year: 2023, period: 'Q3', creation_date: '2023-09-30', status: 'Taslak' }
-      ];
+      // Paralel API çağrıları
+      const [companyData, balanceSheetsData, summaryData] = await Promise.all([
+        CompanyAPI.getCompanyById(id),
+        CompanyAPI.getCompanyBalanceSheets(id),
+        CompanyAPI.getCompanySummary(id)
+      ]);
+      
+      console.log('Şirket detayı alındı:', companyData);
+      console.log('Bilanço geçmişi alındı:', balanceSheetsData);
+      console.log('Özet bilgiler alındı:', summaryData);
       
       setCompany(companyData);
-      setBalanceSheets(demoBalanceSheets);
+      setBalanceSheets(balanceSheetsData);
+      setCompanySummary(summaryData);
       setLoading(false);
     } catch (error) {
       console.error('Şirket detayları yüklenirken hata:', error);
@@ -234,13 +237,9 @@ const CompanyDetail = () => {
                   </div>
                 </div>
                 <div className="space-y-4">
-          <div>
+                  <div>
                     <p className="text-sm font-medium text-gray-500">Kuruluş Tarihi</p>
                     <p className="text-gray-900">{formatDateDDMMYYYY(company.establishment_date) || 'Belirtilmemiş'}</p>
-          </div>
-          <div>
-                    <p className="text-sm font-medium text-gray-500">Unvan</p>
-                    <p className="text-gray-900">{company.title}</p>
                   </div>
                 </div>
               </div>
@@ -268,8 +267,8 @@ const CompanyDetail = () => {
                 <div>
                   <p className="text-sm font-medium text-gray-500">Alt Faaliyet Dalı</p>
                   <p className="text-gray-900">{company.activity_subcategory ? `${company.activity_subcategory} - Motorlu kara taşıtları, treyler ve yarı treyler imalatı` : 'Belirtilmemiş'}</p>
-          </div>
-          <div>
+                </div>
+                <div>
                   <p className="text-sm font-medium text-gray-500">Faaliyet Detayları</p>
                   <p className="text-gray-900">{company.activity_notes || 'Belirtilmemiş'}</p>
                 </div>
@@ -298,12 +297,12 @@ const CompanyDetail = () => {
                         </div>
                         <span className="text-gray-900 font-medium">{partner.name}</span>
                       </div>
-                      <span className="text-green-700 font-semibold">%{partner.sharePercentage}</span>
+                      <span className="text-green-700 font-semibold">%{partner.share_percentage || partner.sharePercentage}</span>
                     </div>
                   ))}
                   <div className="mt-4 p-3 bg-gray-100 rounded-lg">
                     <p className="text-sm text-gray-600">
-                      <strong>Toplam Pay:</strong> %{company.partners.reduce((total, partner) => total + parseFloat(partner.sharePercentage || 0), 0).toFixed(2)}
+                      <strong>Toplam Pay:</strong> %{company.partners.reduce((total, partner) => total + parseFloat(partner.share_percentage || partner.sharePercentage || 0), 0).toFixed(2)}
                     </p>
                   </div>
                 </div>
@@ -338,8 +337,8 @@ const CompanyDetail = () => {
                 <div>
                   <p className="text-sm font-medium text-gray-500">Düzenleme Denetim ve İzleme</p>
                   <p className="text-gray-900">{company.regulation_monitoring || 'Belirtilmemiş'}</p>
-          </div>
-          <div>
+                </div>
+                <div>
                   <p className="text-sm font-medium text-gray-500">Ek Sektör Notları</p>
                   <p className="text-gray-900">{company.sector_notes || 'Belirtilmemiş'}</p>
                 </div>
@@ -356,18 +355,24 @@ const CompanyDetail = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                 <span className="text-sm font-medium text-blue-900">Aktif Bilançolar</span>
-                <span className="text-lg font-bold text-blue-600">{balanceSheets.length}</span>
+                <span className="text-lg font-bold text-blue-600">{companySummary?.statistics?.total_balance_sheets || balanceSheets.length}</span>
               </div>
               <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                 <span className="text-sm font-medium text-green-900">Toplam Ortak</span>
-                <span className="text-lg font-bold text-green-600">{company.partners?.length || 0}</span>
+                <span className="text-lg font-bold text-green-600">{company?.partners?.length || 0}</span>
               </div>
               <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
                 <span className="text-sm font-medium text-purple-900">NACE Kodu</span>
-                <span className="text-lg font-bold text-purple-600">{company.activity_main_category || '-'}</span>
+                <span className="text-lg font-bold text-purple-600">{company?.activity_main_category || '-'}</span>
+              </div>
+              {companySummary?.statistics?.analysis_period && (
+                <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
+                  <span className="text-sm font-medium text-amber-900">Analiz Dönemi</span>
+                  <span className="text-lg font-bold text-amber-600">{companySummary.statistics.analysis_period}</span>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </div>
 
           {/* Bilanço Geçmişi */}
           <div className="bg-white shadow-lg rounded-2xl border border-gray-200 overflow-hidden">
@@ -391,23 +396,23 @@ const CompanyDetail = () => {
                       </div>
                       <div className="flex items-center space-x-2">
                         <span className={`px-2 py-1 text-xs rounded-full ${
-                          sheet.status === 'Onaylandı' 
+                          sheet.analysis_status === 'completed' || sheet.status === 'Onaylandı'
                             ? 'bg-green-100 text-green-800' 
                             : 'bg-yellow-100 text-yellow-800'
                         }`}>
-                          {sheet.status}
+                          {sheet.analysis_status === 'completed' ? 'Tamamlandı' : (sheet.status || 'İşleniyor')}
                         </span>
-          <Link 
+                        <Link 
                           to={`/balance-sheets/${sheet.id}`}
                           className="text-blue-600 hover:text-blue-800 p-1"
                           title="Detay"
-          >
+                        >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                           </svg>
-          </Link>
-        </div>
+                        </Link>
+                      </div>
                     </div>
                   ))}
                 </div>
