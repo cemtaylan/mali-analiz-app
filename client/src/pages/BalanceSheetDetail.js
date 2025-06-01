@@ -82,11 +82,35 @@ const BalanceSheetDetail = () => {
         
         // raw_pdf_data'yı parse et
         let parsedData = null;
+        let detectedItems = [];
+        
         if (balanceSheet.raw_pdf_data) {
           try {
             parsedData = JSON.parse(balanceSheet.raw_pdf_data);
+            console.log('📄 Raw PDF data parse edildi:', parsedData);
+            
+            // Farklı formatları handle et
+            if (parsedData.items && parsedData.items.balance_data) {
+              // Format 1: {items: {balance_data: [...]}}
+              detectedItems = parsedData.items.balance_data;
+              console.log('✅ Format 1 - items.balance_data kullanıldı:', detectedItems.length);
+            } else if (parsedData.balance_data) {
+              // Format 2: {balance_data: [...]}
+              detectedItems = parsedData.balance_data;
+              console.log('✅ Format 2 - balance_data kullanıldı:', detectedItems.length);
+            } else if (Array.isArray(parsedData)) {
+              // Format 3: doğrudan array
+              detectedItems = parsedData;
+              console.log('✅ Format 3 - doğrudan array kullanıldı:', detectedItems.length);
+            } else if (parsedData.items && Array.isArray(parsedData.items)) {
+              // Format 4: {items: [...]}
+              detectedItems = parsedData.items;
+              console.log('✅ Format 4 - items array kullanıldı:', detectedItems.length);
+            } else {
+              console.warn('⚠️ Bilinmeyen raw_pdf_data formatı:', Object.keys(parsedData));
+            }
           } catch (parseError) {
-            console.error('Raw PDF data parse hatası:', parseError);
+            console.error('❌ Raw PDF data parse hatası:', parseError);
           }
         }
         
@@ -102,7 +126,7 @@ const BalanceSheetDetail = () => {
           detected_data: {
             company_name: balanceSheet.company_name,
             tax_number: balanceSheet.tax_number,
-            items: parsedData?.items || []
+            items: detectedItems
           }
         };
         

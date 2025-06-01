@@ -509,6 +509,26 @@ const BalanceSheets = () => {
       .then(analyzeResponse => {
         console.log("PDF analizi başarılı:", analyzeResponse);
         
+        // Şirket bulunamadı uyarısı
+        if (analyzeResponse.company_not_found || analyzeResponse.company_warning) {
+          const warningMessage = analyzeResponse.company_warning || 'Şirket bilgisi bulunamadı';
+          console.warn('⚠️ Şirket uyarısı:', warningMessage);
+          
+          // Kullanıcıya uyarı göster
+          const shouldContinue = window.confirm(
+            `${warningMessage}\n\n` +
+            'Devam etmek istiyor musunuz?\n\n' +
+            '✅ Evet - Şirket bilgilerini manuel olarak düzenleyeceğim\n' +
+            '❌ Hayır - PDF analizi iptal et'
+          );
+          
+          if (!shouldContinue) {
+            setUploadLoading(false);
+            setUploadError('PDF analizi kullanıcı tarafından iptal edildi.');
+            return;
+          }
+        }
+        
         // API'den gelen veriler doğru içermiyorsa uyar
         if (!analyzeResponse.detected_data || !analyzeResponse.detected_data.items || analyzeResponse.detected_data.items.length === 0) {
           console.warn("PDF'den hesap kalemleri çıkarılamadı veya boş geldi");

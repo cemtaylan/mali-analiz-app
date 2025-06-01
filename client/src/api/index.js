@@ -432,12 +432,24 @@ export const BalanceSheetAPI = {
         };
         
         // VKN tespit edildi mi kontrol et ve şirket bilgisini al
-        let detectedTaxNumber = transformedResponse.detected_data.tax_number;
+        let detectedTaxNumber = response.data.detected_data?.tax_number || transformedResponse.detected_data.tax_number;
+        
+        // Backend console'dan görülebilen VKN varsa kullan
+        console.log('🔍 Backend\'ten gelen response kontrol ediliyor:', {
+          response_detected_data: response.data.detected_data,
+          response_company_info: response.data.company_info,
+          detectedTaxNumber: detectedTaxNumber
+        });
         
         // Eğer API'den VKN gelmedi ise financial_data'dan çıkarmaya çalış
         if (!detectedTaxNumber && response.data.financial_data) {
           // PDF'deki VKN'yi financial_data içinde ara
-          for (const item of response.data.financial_data) {
+          // financial_data'nın array olup olmadığını kontrol et
+          const financialDataArray = Array.isArray(response.data.financial_data) 
+            ? response.data.financial_data 
+            : (response.data.financial_data.balance_data || []);
+            
+          for (const item of financialDataArray) {
             if (item.account_name && item.account_name.includes('VKN')) {
               // VKN değerini çıkarmaya çalış
               const vknMatch = item.account_name.match(/(\d{10})/);
@@ -466,34 +478,47 @@ export const BalanceSheetAPI = {
               transformedResponse.detected_data.tax_number = companyCheckResult.company.tax_number;
               transformedResponse.detected_data.email = companyCheckResult.company.email || '';
               transformedResponse.detected_data.trade_registry_number = companyCheckResult.company.trade_registry_number || '';
+              transformedResponse.company_found = companyCheckResult.company;
             } else {
               console.warn('⚠️ VKN kayıtlı değil:', detectedTaxNumber);
+              transformedResponse.detected_data.company_name = `VKN: ${detectedTaxNumber} (Kayıt bulunamadı)`;
+              transformedResponse.company_not_found = true;
+              transformedResponse.company_warning = `VKN ${detectedTaxNumber} ile kayıtlı şirket bulunamadı. Lütfen önce şirket kaydı oluşturun.`;
             }
           } catch (companyError) {
             console.error('Şirket bilgisi alınırken hata:', companyError);
+            transformedResponse.company_error = companyError.message;
           }
         } else {
           console.warn('VKN tespit edilemedi veya geçersiz format');
+          transformedResponse.company_warning = 'PDF\'den VKN tespit edilemedi. Lütfen VKN bilgisini manuel olarak girin.';
         }
         
         // PDF'deki dönem ve yıl bilgisini tespit et
-        if (response.data.financial_data && response.data.financial_data.length > 0) {
-          // İlk item'dan yıl sütunlarını çıkar
-          const firstItem = response.data.financial_data[0];
-          const yearKeys = Object.keys(firstItem).filter(key => /^\d{4}$/.test(key));
-          
-          if (yearKeys.length > 0) {
-            const years = yearKeys.map(y => parseInt(y)).sort((a, b) => b - a); // Büyükten küçüğe sırala
+        if (response.data.financial_data) {
+          // financial_data'nın array olup olmadığını kontrol et
+          const financialDataArray = Array.isArray(response.data.financial_data) 
+            ? response.data.financial_data 
+            : (response.data.financial_data.balance_data || []);
             
-            if (years.length >= 1) {
-              transformedResponse.detected_data.current_period_year = years[0];
-              transformedResponse.detected_data.year = years[0];
-              console.log('📅 Cari dönem yılı PDF\'den tespit edildi:', years[0]);
-            }
+          if (financialDataArray.length > 0) {
+            // İlk item'dan yıl sütunlarını çıkar
+            const firstItem = financialDataArray[0];
+            const yearKeys = Object.keys(firstItem).filter(key => /^\d{4}$/.test(key));
             
-            if (years.length >= 2) {
-              transformedResponse.detected_data.previous_period_year = years[1];
-              console.log('📅 Önceki dönem yılı PDF\'den tespit edildi:', years[1]);
+            if (yearKeys.length > 0) {
+              const years = yearKeys.map(y => parseInt(y)).sort((a, b) => b - a); // Büyükten küçüğe sırala
+              
+              if (years.length >= 1) {
+                transformedResponse.detected_data.current_period_year = years[0];
+                transformedResponse.detected_data.year = years[0];
+                console.log('📅 Cari dönem yılı PDF\'den tespit edildi:', years[0]);
+              }
+              
+              if (years.length >= 2) {
+                transformedResponse.detected_data.previous_period_year = years[1];
+                console.log('📅 Önceki dönem yılı PDF\'den tespit edildi:', years[1]);
+              }
             }
           }
         }
@@ -951,6 +976,38 @@ export const BalanceSheetAPI = {
           }
         }
       };
+    }
+  },
+
+  // Bilanço preview verilerini veritabanına kaydet
+  saveBalanceSheetFromPreview: async (previewData) => {
+    try {
+      console.log("📊 Bilanço preview verilerini veritabanına kaydediyor...");
+      
+      const response = await axios.post(`${API_BASE_URL}/balance-sheets/save-from-preview`, {
+        detected_data: previewData.detected_data,
+        company_info: previewData.company_info || previewData.company_found,
+        analysis_metadata: previewData.analysis_metadata || {
+          filename: 'preview-import.pdf',
+          year: previewData.detected_data.year,
+          period: previewData.detected_data.period
+        },
+        raw_pdf_data: previewData.raw_pdf_data || previewData
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log("✅ Bilanço başarıyla kaydedildi:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("❌ Bilanço kaydetme hatası:", error);
+      
+      if (error.response) {
+        throw new Error(error.response.data.error || 'Bilanço kaydedilemedi');
+      }
+      throw new Error('API bağlantı hatası');
     }
   },
 };

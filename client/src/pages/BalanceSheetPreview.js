@@ -184,30 +184,65 @@ const BalanceSheetPreview = () => {
           
           const storageData = localStorage.getItem('pdfAnalysisData');
           if (storageData) {
+            console.log('📦 Preview verisi localStorage\'dan okunuyor...');
             const parsedData = JSON.parse(storageData);
-            setAnalyzedData(parsedData);
+            console.log('📄 Preview verisi alındı:', parsedData);
+            
+            // Veri formatını kontrol et ve düzelt
+            let processedData = parsedData;
+            if (parsedData.detected_data && parsedData.detected_data.items) {
+              // Doğru format - doğrudan kullan
+              setAnalyzedData(parsedData);
+              
+              // Önizleme verisi hazırla
+              const previewResponse = await BalanceSheetAPI.prepareBalanceSheetPreview(parsedData);
+              
+              if (previewResponse.success) {
+                setPreviewData(previewResponse.preview_data);
+                console.log('✅ Önizleme verisi hazırlandı:', previewResponse.preview_data);
+              } else {
+                throw new Error(previewResponse.error);
+              }
+            } else if (parsedData.items) {
+              // Eski format - güncelle
+              processedData = {
+                success: true,
+                detected_data: {
+                  company_name: parsedData.company_name || "Bilinmiyor",
+                  tax_number: parsedData.tax_number || "",
+                  year: parsedData.year || new Date().getFullYear(),
+                  period: parsedData.period || "YILLIK",
+                  items: parsedData.items
+                }
+              };
+              setAnalyzedData(processedData);
+              
+              // Önizleme verisi hazırla
+              const previewResponse = await BalanceSheetAPI.prepareBalanceSheetPreview(processedData);
+              
+              if (previewResponse.success) {
+                setPreviewData(previewResponse.preview_data);
+              } else {
+                throw new Error(previewResponse.error);
+              }
+            } else {
+              console.warn('⚠️ localStorage verisi beklenenden farklı format:', Object.keys(parsedData));
+              throw new Error('localStorage verisi geçersiz formatta');
+            }
+          } else {
+            // Demo veri kullan
+            console.log('🎭 Demo veri kullanılıyor...');
+            saveGeminiDataToLocalStorage();
+            const demoData = JSON.parse(localStorage.getItem('pdfAnalysisData'));
+            setAnalyzedData(demoData);
             
             // Önizleme verisi hazırla
-            const previewResponse = await BalanceSheetAPI.prepareBalanceSheetPreview(parsedData);
+            const previewResponse = await BalanceSheetAPI.prepareBalanceSheetPreview(demoData);
             
             if (previewResponse.success) {
               setPreviewData(previewResponse.preview_data);
             } else {
               throw new Error(previewResponse.error);
-            }
-          } else {
-            // Demo veri kullan
-            console.log('🎭 Demo veri kullanılıyor...');
-            const demoResponse = await BalanceSheetAPI.getDemoAnalysisWithJson();
-            
-            if (demoResponse.success) {
-              setPreviewData(demoResponse.preview_data);
-              setAnalyzedData({
-                success: true,
-                detected_data: demoResponse.preview_data.detected_data
-              });
-            } else {
-              throw new Error('Demo veri yüklenemedi');
             }
           }
         }
@@ -246,39 +281,38 @@ const BalanceSheetPreview = () => {
 
   // Bilanço verisini kaydet
   const saveBalanceSheet = async () => {
-    if (!previewData) {
-      console.error('Önizleme verisi eksik');
+    if (!analyzedData || !analyzedData.detected_data) {
+      console.error('❌ Analiz verisi eksik');
+      alert('Kaydetmek için geçerli analiz verisi bulunamadı!');
       return;
     }
 
     setSaving(true);
     
     try {
-      const saveResponse = await BalanceSheetAPI.saveBalanceSheetPreview(previewData);
+      console.log('📊 Bilanço kaydediliyor...', {
+        company_info: analyzedData.company_found || analyzedData.company_info,
+        detected_data: analyzedData.detected_data,
+        items_count: analyzedData.detected_data.items?.length
+      });
+
+      const saveResponse = await BalanceSheetAPI.saveBalanceSheetFromPreview(analyzedData);
       
-      if (saveResponse.success) {
-        console.log("✅ Bilanço başarıyla kaydedildi:", saveResponse);
-        
-        navigate('/balance-sheets', {
-          state: {
-            success: true,
-            message: `PDF başarıyla analiz edildi ve bilanço oluşturuldu. (${saveResponse.saved_items_count} kalem kaydedildi)`
-          }
-        });
-      } else {
-        throw new Error(saveResponse.error);
-      }
+      console.log("✅ Bilanço başarıyla kaydedildi:", saveResponse);
+      
+      // Başarılı kaydetme sonrası yönlendirme
+      navigate('/balance-sheets', {
+        state: {
+          success: true,
+          message: `${saveResponse.company_name} şirketi için ${saveResponse.year} ${saveResponse.period} dönemi bilançosu başarıyla kaydedildi. (${saveResponse.items_saved} kalem)`
+        }
+      });
       
     } catch (error) {
       console.error('❌ Bilanço kaydetme hatası:', error);
       
-      // Demo modda bile devam et
-      navigate('/balance-sheets', {
-        state: {
-          success: true,
-          message: 'PDF analizi tamamlandı (Demo Mod).'
-        }
-      });
+      // Kullanıcıya hata mesajı göster
+      alert(`Bilanço kaydedilemedi: ${error.message}`);
     } finally {
       setSaving(false);
     }

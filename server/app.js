@@ -760,15 +760,16 @@ async function extractFinancialDataWithGemini(filePath) {
   const jsonData = await fs.readFile("account_codes.json");
 
   let prompt =
-    `Bu PDF dosyasında yer alan "TEK DÜZEN HESAP PLANI AYRINTILI BİLANÇO VE AYRINTILI GELİR TABLOSU" altındaki **Aktif** ve **Pasif** tablolarını ayır.     
+    `Bu PDF dosyasında yer alan "TEK DÜZEN HESAP PLANI AYRINTILI BİLANÇO VE AYRINTILI GELİR TABLOSU" altındaki **Aktif** ve **Pasif** tablolarını ayır.     
 
-ÖNEMLI: Ayrıca PDF'te yer alan VKN (Vergi Kimlik Numarası), şirket adını, dönem yılını ve dönem tipini (YILLIK, Q1, Q2, Q3, Q4, vb.) da çıkar.
+ÖNEMLI: PDF'te yer alan VKN (Vergi Kimlik Numarası), dönem yılını ve dönem tipini (YILLIK, Q1, Q2, Q3, Q4, vb.) çıkar. 
+ŞIRKET ADI OKUMA - Şirket adını okumaya çalışma, sadece VKN yeterli!
 
 - Kolon isimininde açıklama geçiyorsa description yap. Yıl içeriyorsa sadece yıl değeri yap. Yıl ve enflasyon sonrası içeriyorsa yıl_E formatında isimlendir.
 
 - Veriyi aşağıdaki JSON datasındaki açıklamalara yakın benzerliklerle eşleştir. Eşleşen kaydın code değerini "definition" alanına yaz. Eşleşme bulunamazsa "eşleşmedi" yaz.
 
-- VKN, şirket adı, dönem yılı ve dönem tipini ayrı olarak çıkar.
+- VKN, dönem yılı ve dönem tipini ayrı olarak çıkar.
 
 -- JSON DATA: 
 
@@ -780,11 +781,10 @@ async function extractFinancialDataWithGemini(filePath) {
 
   Bu tablolardaki verileri tamamen object içeren JSON array olarak dön.
   
-  Ayrıca PDF'ten çıkardığın VKN, şirket adı, yıl ve dönem bilgilerini şu formatta ekle:
+  Ayrıca PDF'ten çıkardığın VKN, yıl ve dönem bilgilerini şu formatta ekle:
   {
     "company_info": {
       "tax_number": "bulunan_vkn",
-      "company_name": "bulunan_şirket_adı",
       "year": bilanço_yılı_sayı_olarak,
       "period": "dönem_tipi_YILLIK_veya_Q1_Q2_vb"
     },
@@ -854,6 +854,18 @@ app.post("/upload", upload.single("file"), async (req, res) => {
       return res.status(500).json({ error: financialData.error });
     }
 
+    // Gemini'den gelen veriyi frontend'in beklediği formata dönüştür
+    let transformedData = {
+      detected_data: {
+        company_name: "Bilinmeyen Şirket", // Varsayılan - VKN bulunursa DB'den güncellenecek
+        tax_number: "",
+        year: new Date().getFullYear(),
+        period: "YILLIK",
+        items: []
+      },
+      company_info: null // Şirket bilgilerini de ekle
+    };
+
     // VKN ve şirket bilgilerini çıkar
     let companyInfo = null;
     let balanceData = [];
@@ -862,6 +874,11 @@ app.post("/upload", upload.single("file"), async (req, res) => {
       // Yeni format
       balanceData = financialData.balance_data;
       const taxNumber = financialData.company_info.tax_number;
+      
+      // Temel bilgileri güncelle
+      transformedData.detected_data.tax_number = taxNumber || "";
+      transformedData.detected_data.year = financialData.company_info.year || new Date().getFullYear();
+      transformedData.detected_data.period = financialData.company_info.period || "YILLIK";
       
       if (taxNumber) {
         // VKN ile şirket bilgilerini veritabanından getir
@@ -878,27 +895,18 @@ app.post("/upload", upload.single("file"), async (req, res) => {
         
         if (company) {
           companyInfo = company;
-          console.log(`VKN ${taxNumber} ile şirket bulundu:`, company.name);
+          transformedData.detected_data.company_name = company.name;
+          transformedData.company_info = company;
+          console.log(`✅ VKN ${taxNumber} ile şirket bulundu: ${company.name}`);
         } else {
-          console.log(`VKN ${taxNumber} ile şirket bulunamadı`);
+          transformedData.detected_data.company_name = `VKN: ${taxNumber} (Kayıt bulunamadı)`;
+          console.log(`⚠️ VKN ${taxNumber} ile şirket bulunamadı`);
         }
       }
     } else if (Array.isArray(financialData)) {
       // Eski format
       balanceData = financialData;
     }
-
-    // Gemini'den gelen veriyi frontend'in beklediği formata dönüştür
-    let transformedData = {
-      detected_data: {
-        company_name: companyInfo ? companyInfo.name : (financialData.company_info?.company_name || "Bilinmeyen Şirket"),
-        tax_number: companyInfo ? companyInfo.tax_number : (financialData.company_info?.tax_number || ""),
-        year: financialData.company_info?.year || new Date().getFullYear(),
-        period: financialData.company_info?.period || "YILLIK",
-        items: []
-      },
-      company_info: companyInfo // Şirket bilgilerini de ekle
-    };
 
     if (Array.isArray(balanceData)) {
       // Bilanço verilerini işle
@@ -928,7 +936,8 @@ app.post("/upload", upload.single("file"), async (req, res) => {
         found_company: companyInfo // VKN ile bulunan şirket bilgilerini ekle
       },
       company_info: companyInfo, // Şirket bilgilerini döndür
-      financial_data: financialData, // Orijinal veriyi de gönder
+      financial_data: transformedData.detected_data.items, // Frontend'in beklediği format: items array'i
+      raw_financial_data: financialData, // Orijinal Gemini verisini de gönder
     });
 
     // İşlem tamamlandıktan sonra geçici dosyayı temizle
@@ -2292,7 +2301,7 @@ app.post("/analyze-pdf-with-json", upload.single("file"), async (req, res) => {
 
     // PDF'den çıkarılan veriyi işle
     let detectedData = {
-      company_name: detectedCompany ? detectedCompany.name : (company_info?.name || "Bilinmeyen Şirket"),
+      company_name: "Bilinmeyen Şirket", // Varsayılan değer
       tax_number: company_info?.tax_number || "",
       year: target_year || analysis_metadata?.year || new Date().getFullYear(),
       period: target_period || analysis_metadata?.period || "YILLIK",
@@ -2304,11 +2313,19 @@ app.post("/analyze-pdf-with-json", upload.single("file"), async (req, res) => {
       // Yeni format - company_info ve balance_data ayrı
       detectedData = {
         ...detectedData,
-        company_name: financialData.company_info.company_name || detectedData.company_name,
         tax_number: financialData.company_info.tax_number || detectedData.tax_number,
         year: financialData.company_info.year || detectedData.year,
         period: financialData.company_info.period || detectedData.period
       };
+
+      // VKN ile şirket adını DB'den getir
+      if (detectedData.tax_number && detectedCompany) {
+        detectedData.company_name = detectedCompany.name;
+        console.log(`✅ Şirket adı DB'den alındı: ${detectedCompany.name}`);
+      } else if (detectedData.tax_number) {
+        detectedData.company_name = `VKN: ${detectedData.tax_number} (Kayıt bulunamadı)`;
+        console.log(`⚠️ VKN ${detectedData.tax_number} için şirket bulunamadı`);
+      }
 
       if (financialData.balance_data && Array.isArray(financialData.balance_data)) {
         detectedData.items = financialData.balance_data.map(item => ({
@@ -2402,22 +2419,12 @@ app.post("/balance-sheets/prepare-preview", async (req, res) => {
       });
     }
 
-    // Account codes'u yükle
-    const accountCodes = JSON.parse(await fs.readFile("account_codes.json", 'utf8'));
-    
     // PDF'den gelen kalemlerle hesap planını eşleştir
     const mappedItems = detected_data.items.map(item => {
-      // Account code'u hesap planından bul
-      const accountCode = accountCodes.find(acc => 
-        acc.code === item.definition || 
-        acc.name.toLowerCase().includes(item.account_name.toLowerCase())
-      );
-
       return {
-        account_code: item.definition,
+        account_code: item.definition || item.account_code,
         account_name: item.account_name || item.description,
         description: item.description || item.account_name,
-        matched_account: accountCode || null,
         year_data: Object.keys(item).reduce((acc, key) => {
           if (/^\d{4}(_E)?$/.test(key)) {
             acc[key] = item[key];
@@ -2462,7 +2469,7 @@ app.post("/balance-sheets/prepare-preview", async (req, res) => {
         period: detected_data.period,
         processed_at: new Date().toISOString(),
         total_items: mappedItems.length,
-        matched_items: mappedItems.filter(item => item.matched_account).length
+        matched_items: mappedItems.filter(item => item.account_code && item.account_code !== 'eşleşmedi').length
       }
     };
 
@@ -2554,50 +2561,9 @@ app.post("/balance-sheets/save-preview", async (req, res) => {
       });
     });
 
-    // Bilanço kalemlerini kaydet
-    const items = detected_data.items || [];
-    let savedItemsCount = 0;
-
-    for (const item of items) {
-      try {
-        // Yıl verilerini parse et
-        const yearData = item.year_data || {};
-        const currentYearKey = detected_data.current_period_year?.toString();
-        const previousYearKey = detected_data.previous_period_year?.toString();
-        
-        const currentAmount = yearData[currentYearKey] ? 
-          parseFloat(yearData[currentYearKey].toString().replace(/[.,]/g, '').replace(/[^\d]/g, '')) / 100 : 0;
-        const previousAmount = yearData[previousYearKey] ? 
-          parseFloat(yearData[previousYearKey].toString().replace(/[.,]/g, '').replace(/[^\d]/g, '')) / 100 : 0;
-
-        // Hesap tipini belirle (A = aktif, P = pasif)
-        const accountType = item.account_code?.startsWith('A') ? 'active' : 'passive';
-
-        await new Promise((resolve, reject) => {
-          db.run(`
-            INSERT INTO balance_sheet_items (
-              balance_sheet_id, company_id, account_code, account_name, 
-              account_type, current_year_amount, previous_year_amount, year, period
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `, [
-            balanceSheetId, companyId, item.account_code, item.account_name,
-            accountType, currentAmount, previousAmount, detected_data.year, detected_data.period
-          ], function(err) {
-            if (err) reject(err);
-            else resolve(this.lastID);
-          });
-        });
-
-        savedItemsCount++;
-      } catch (itemError) {
-        console.error(`❌ Kalem kaydetme hatası (${item.account_code}):`, itemError);
-      }
-    }
-
     console.log("✅ Bilanço başarıyla kaydedildi:", {
       balance_sheet_id: balanceSheetId,
       company_id: companyId,
-      saved_items: savedItemsCount,
       company: company_info.name
     });
 
@@ -2605,8 +2571,7 @@ app.post("/balance-sheets/save-preview", async (req, res) => {
       success: true,
       message: "Bilanço başarıyla kaydedildi",
       balance_sheet_id: balanceSheetId,
-      company_id: companyId,
-      saved_items_count: savedItemsCount
+      company_id: companyId
     });
 
   } catch (error) {
@@ -2777,6 +2742,251 @@ app.get("/companies/:companyId/summary", (req, res) => {
     console.error("Şirket özet hatası:", error);
     res.status(500).json({ 
       error: `Şirket özeti alınamadı: ${error.message}` 
+    });
+  }
+});
+
+// Bilanço detayını getir endpoint'i
+app.get("/balance-sheets/:id", (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!/^\d+$/.test(id)) {
+      return res.status(400).json({ 
+        error: "Geçersiz bilanço ID formatı" 
+      });
+    }
+    
+    console.log("Bilanço detayı istendi:", id);
+    
+    // Bilanço temel bilgileri
+    db.get(`
+      SELECT bs.*, c.name as company_full_name, c.industry
+      FROM balance_sheets bs
+      LEFT JOIN companies c ON bs.company_id = c.id
+      WHERE bs.id = ?
+    `, [id], (err, balanceSheet) => {
+      if (err) {
+        console.error('Bilanço detay sorgu hatası:', err.message);
+        return res.status(500).json({ 
+          error: `Bilanço detayı alınamadı: ${err.message}` 
+        });
+      }
+      
+      if (!balanceSheet) {
+        return res.status(404).json({ 
+          error: "Bilanço bulunamadı" 
+        });
+      }
+      
+      // raw_pdf_data'yı parse et ve items'ı çıkar
+      let items = [];
+      if (balanceSheet.raw_pdf_data) {
+        try {
+          const parsedData = JSON.parse(balanceSheet.raw_pdf_data);
+          console.log('📄 Raw PDF data parse edildi, yapı:', Object.keys(parsedData));
+          
+          // Farklı formatları handle et
+          if (parsedData.items && parsedData.items.balance_data) {
+            // Format 1: {items: {balance_data: [...]}}
+            items = parsedData.items.balance_data;
+            console.log('✅ Format 1 - items.balance_data kullanıldı:', items.length);
+          } else if (parsedData.balance_data) {
+            // Format 2: {balance_data: [...]}
+            items = parsedData.balance_data;
+            console.log('✅ Format 2 - balance_data kullanıldı:', items.length);
+          } else if (Array.isArray(parsedData)) {
+            // Format 3: doğrudan array
+            items = parsedData;
+            console.log('✅ Format 3 - doğrudan array kullanıldı:', items.length);
+          } else if (parsedData.items && Array.isArray(parsedData.items)) {
+            // Format 4: {items: [...]}
+            items = parsedData.items;
+            console.log('✅ Format 4 - items array kullanıldı:', items.length);
+          } else {
+            console.warn('⚠️ Bilinmeyen raw_pdf_data formatı:', Object.keys(parsedData));
+          }
+        } catch (parseError) {
+          console.error('❌ Raw PDF data parse hatası:', parseError);
+        }
+      }
+      
+      console.log(`Bilanço detayı hazırlandı: ${items.length} kalem (ID: ${id})`);
+      
+      res.json({
+        balance_sheet: {
+          id: balanceSheet.id,
+          company_name: balanceSheet.company_full_name || balanceSheet.company_name,
+          tax_number: balanceSheet.tax_number,
+          year: balanceSheet.year,
+          period: balanceSheet.period,
+          creation_date: balanceSheet.creation_date,
+          notes: balanceSheet.notes,
+          pdf_filename: balanceSheet.pdf_filename,
+          analysis_status: balanceSheet.analysis_status,
+          currency: balanceSheet.currency,
+          raw_pdf_data: balanceSheet.raw_pdf_data,
+          industry: balanceSheet.industry
+        },
+        items: items
+      });
+    });
+    
+  } catch (error) {
+    console.error("Bilanço detay hatası:", error);
+    res.status(500).json({ 
+      error: `Bilanço detayı alınamadı: ${error.message}` 
+    });
+  }
+});
+
+// Bilanço preview verilerini veritabanına kaydet
+app.post("/balance-sheets/save-from-preview", async (req, res) => {
+  try {
+    console.log("📊 Bilanço preview'dan veritabanına kaydediliyor");
+    
+    const { 
+      detected_data, 
+      company_info, 
+      analysis_metadata,
+      raw_pdf_data 
+    } = req.body;
+
+    if (!detected_data || !detected_data.items || !company_info) {
+      return res.status(400).json({ 
+        error: "Eksik veri: detected_data, items ve company_info gerekli" 
+      });
+    }
+
+    const companyId = company_info.id;
+    const year = detected_data.year || analysis_metadata?.year || new Date().getFullYear();
+    const period = detected_data.period || analysis_metadata?.period || "YILLIK";
+
+    console.log(`📋 Şirket: ${company_info.name} (ID: ${companyId})`);
+    console.log(`📅 Dönem: ${year} - ${period}`);
+    console.log(`📊 Kalem sayısı: ${detected_data.items?.length || 0}`);
+
+    // Önce aynı şirket, yıl ve dönem için kayıt var mı kontrol et
+    const existingRecord = await new Promise((resolve, reject) => {
+      db.get(`
+        SELECT id FROM balance_sheets 
+        WHERE company_id = ? AND year = ? AND period = ?
+      `, [companyId, year, period], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (existingRecord) {
+      console.log(`⚠️ Bu şirket için ${year} ${period} dönemi zaten mevcut`);
+      return res.status(400).json({ 
+        error: `${company_info.name} şirketi için ${year} ${period} dönemi zaten kayıtlı (ID: ${existingRecord.id})`,
+        existing_balance_sheet_id: existingRecord.id
+      });
+    }
+
+    // Yeni bilanço kaydı oluştur
+    const balanceSheetId = await new Promise((resolve, reject) => {
+      db.run(`
+        INSERT INTO balance_sheets (
+          company_id, 
+          company_name, 
+          tax_number, 
+          year, 
+          period, 
+          creation_date, 
+          pdf_filename, 
+          analysis_status, 
+          currency, 
+          notes,
+          raw_pdf_data,
+          created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      `, [
+        companyId,
+        company_info.name,
+        company_info.tax_number,
+        year,
+        period,
+        new Date().toISOString().split('T')[0], // YYYY-MM-DD format
+        analysis_metadata?.filename || 'preview-import.pdf',
+        'completed',
+        'TL',
+        `Preview'dan kaydedildi - ${detected_data.items?.length || 0} kalem`,
+        JSON.stringify(raw_pdf_data || detected_data),
+      ], function(err) {
+        if (err) reject(err);
+        else resolve(this.lastID);
+      });
+    });
+
+    console.log(`✅ Bilanço kaydı oluşturuldu (ID: ${balanceSheetId})`);
+
+    // Bilanço kalemlerini kaydet
+    let savedItemsCount = 0;
+    let skippedItemsCount = 0;
+
+    for (const item of detected_data.items) {
+      try {
+        // Yıl verilerini çıkar
+        const yearData = {};
+        Object.keys(item).forEach(key => {
+          if (/^\d{4}(_E)?$/.test(key)) {
+            yearData[key] = item[key];
+          }
+        });
+
+        await new Promise((resolve, reject) => {
+          db.run(`
+            INSERT INTO balance_sheet_items (
+              balance_sheet_id,
+              account_code,
+              account_name,
+              description,
+              definition,
+              year_data,
+              created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+          `, [
+            balanceSheetId,
+            item.definition || 'N/A',
+            item.account_name || item.description || 'N/A',
+            item.description || item.account_name || 'N/A',
+            item.definition || 'eşleşmedi',
+            JSON.stringify(yearData)
+          ], function(err) {
+            if (err) reject(err);
+            else resolve(this.lastID);
+          });
+        });
+
+        savedItemsCount++;
+      } catch (itemError) {
+        console.error(`❌ Kalem kaydetme hatası:`, itemError);
+        skippedItemsCount++;
+      }
+    }
+
+    console.log(`📊 Bilanço kaydetme tamamlandı:`);
+    console.log(`   ✅ Kaydedilen kalemler: ${savedItemsCount}`);
+    console.log(`   ⚠️ Atlanan kalemler: ${skippedItemsCount}`);
+
+    // Başarılı yanıt döndür
+    res.json({
+      success: true,
+      balance_sheet_id: balanceSheetId,
+      company_name: company_info.name,
+      year: year,
+      period: period,
+      items_saved: savedItemsCount,
+      items_skipped: skippedItemsCount,
+      message: `${company_info.name} şirketi için ${year} ${period} dönemi başarıyla kaydedildi`
+    });
+
+  } catch (error) {
+    console.error("Bilanço kaydetme hatası:", error);
+    res.status(500).json({ 
+      error: `Bilanço kaydedilemedi: ${error.message}` 
     });
   }
 });
