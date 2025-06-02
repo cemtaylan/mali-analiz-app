@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { CompanyAPI } from '../api';
 
 // Tarih formatı DDMMYYYY
@@ -54,6 +54,7 @@ const CompanyDetail = () => {
   const [companySummary, setCompanySummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showQuickActions, setShowQuickActions] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchCompanyDetails();
@@ -84,6 +85,36 @@ const CompanyDetail = () => {
     }
   };
 
+  // En güncel bilanço ID'sini bul
+  const getLatestBalanceSheetId = () => {
+    if (!balanceSheets || balanceSheets.length === 0) {
+      return null;
+    }
+    
+    // Bilançoları yıl ve döneme göre sırala (en güncel önce)
+    const sortedSheets = balanceSheets.sort((a, b) => {
+      if (a.year !== b.year) return b.year - a.year;
+      
+      const periodOrder = { 'YILLIK': 5, 'Q4': 4, 'Q3': 3, 'Q2': 2, 'Q1': 1 };
+      return (periodOrder[b.period] || 0) - (periodOrder[a.period] || 0);
+    });
+    
+    return sortedSheets[0].id;
+  };
+
+  // Finansal rapor sayfasına git
+  const handleFinancialReport = () => {
+    const latestBalanceSheetId = getLatestBalanceSheetId();
+    
+    if (latestBalanceSheetId) {
+      setShowQuickActions(false);
+      navigate(`/balance-sheets/${latestBalanceSheetId}/analysis`);
+    } else {
+      setShowQuickActions(false);
+      alert('Bu şirket için henüz finansal analiz yapılabilecek bilanço bulunmamaktadır. Lütfen önce bilanço ekleyin.');
+    }
+  };
+
   // Hızlı işlemler
   const quickActions = [
     {
@@ -93,7 +124,7 @@ const CompanyDetail = () => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
         </svg>
       ),
-      action: () => window.location.href = '/balance-sheets/new',
+      action: () => navigate('/balance-sheets/new'),
       color: 'bg-green-600 hover:bg-green-700'
     },
     {
@@ -103,7 +134,7 @@ const CompanyDetail = () => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
         </svg>
       ),
-      action: () => window.location.href = '/balance-sheets',
+      action: () => navigate('/balance-sheets'),
       color: 'bg-blue-600 hover:bg-blue-700'
     },
     {
@@ -113,7 +144,7 @@ const CompanyDetail = () => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
       ),
-      action: () => alert('Finansal rapor özelliği yakında eklenecek'),
+      action: handleFinancialReport,
       color: 'bg-purple-600 hover:bg-purple-700'
     },
     {
