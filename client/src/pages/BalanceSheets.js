@@ -724,20 +724,36 @@ const BalanceSheets = () => {
   const handleDeleteBalanceSheet = async () => {
     try {
       setLoading(true);
-      // await BalanceSheetAPI.deleteBalanceSheet(balanceSheetToDelete.id);
       
-      // Geçici olarak mock silme - listeyi güncelle
+      // Gerçek API çağrısını yap
+      await BalanceSheetAPI.deleteBalanceSheet(balanceSheetToDelete.id);
+      
+      // Başarılı silme sonrası listeyi güncelle
       setBalanceSheets(balanceSheets.filter(sheet => sheet.id !== balanceSheetToDelete.id));
       setFilteredBalanceSheets(filteredBalanceSheets.filter(sheet => sheet.id !== balanceSheetToDelete.id));
       
-      setSuccessMessage(`${balanceSheetToDelete.company} - ${balanceSheetToDelete.year} ${balanceSheetToDelete.period} bilançosu başarıyla silindi.`);
-        setTimeout(() => {
-          setSuccessMessage('');
-        }, 5000);
+      // Modern alert ile başarı mesajı göster
+      setAlertConfig({
+        isOpen: true,
+        type: 'success',
+        title: 'Bilanço Silindi',
+        message: `${balanceSheetToDelete.company || balanceSheetToDelete.company_name} - ${balanceSheetToDelete.year} ${balanceSheetToDelete.period} bilançosu başarıyla silindi.`,
+        confirmText: 'Tamam',
+        onConfirm: () => setAlertConfig({ isOpen: false })
+      });
       
     } catch (err) {
       console.error("Bilanço silme sırasında hata:", err);
-      setError('Bilanço silinirken bir hata oluştu. Lütfen tekrar deneyin.');
+      
+      // Modern alert ile hata mesajı göster
+      setAlertConfig({
+        isOpen: true,
+        type: 'error',
+        title: 'Silme Hatası',
+        message: 'Bilanço silinirken bir hata oluştu. Lütfen tekrar deneyin.',
+        confirmText: 'Tamam',
+        onConfirm: () => setAlertConfig({ isOpen: false })
+      });
     } finally {
       setLoading(false);
       setShowDeleteModal(false);
