@@ -1010,6 +1010,11 @@ export const BalanceSheetAPI = {
       throw new Error('API bağlantı hatası');
     }
   },
+
+  // Analiz edilen bilanço verilerini kaydet (alias for saveBalanceSheetFromPreview)
+  saveAnalyzedBalanceSheet: async (previewData) => {
+    return await BalanceSheetAPI.saveBalanceSheetFromPreview(previewData);
+  },
 };
 
 /**

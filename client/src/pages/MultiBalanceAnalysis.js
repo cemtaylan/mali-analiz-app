@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { BalanceSheetAPI, CompanyAPI } from '../api';
 import ModernAlert from '../components/ModernAlert';
@@ -104,13 +104,26 @@ const MultiBalanceAnalysis = () => {
       
     } catch (error) {
       console.error('❌ Şirketler yüklenirken hata:', error);
-      setAlertConfig({
-        isOpen: true,
-        type: 'error',
-        title: 'Veri Yükleme Hatası',
-        message: 'Şirket verileri yüklenirken hata oluştu. Lütfen sayfayı yenileyin veya daha sonra tekrar deneyin.',
-        onClose: () => setAlertConfig({ isOpen: false })
-      });
+      setApiError('API bağlantısı kurulamadı. Demo modda çalışılıyor.');
+      
+      // Sadece ağ hatası varsa demo veri kullan
+      if (error.message.includes('Network Error') || error.message.includes('ECONNREFUSED')) {
+        const demoCompanies = [
+          { id: 1, name: "ABC Şirketi", tax_number: "1234567890" },
+          { id: 2, name: "XYZ Holding", tax_number: "0987654321" },
+          { id: 3, name: "Örnek Anonim Şirketi", tax_number: "5555555555" },
+          { id: 4, name: "MEMSAN MAKİNA İMALAT SANAYİ VE TİCARET LTD.ŞTİ.", tax_number: "6140087281" }
+        ];
+        setCompanies(demoCompanies);
+      } else {
+        setAlertConfig({
+          isOpen: true,
+          type: 'error',
+          title: 'Veri Yükleme Hatası',
+          message: 'Şirket verileri yüklenirken hata oluştu. Lütfen sayfayı yenileyin veya daha sonra tekrar deneyin.',
+          onClose: () => setAlertConfig({ isOpen: false })
+        });
+      }
       
     } finally {
       setLoading(false);
@@ -160,11 +173,12 @@ const MultiBalanceAnalysis = () => {
       
     } catch (error) {
       console.error('❌ Bilançolar yüklenirken hata:', error);
+      setApiError('Bilanço verileri alınamadı. API bağlantısını kontrol edin.');
       setAlertConfig({
         isOpen: true,
         type: 'error',
         title: 'Bilanço Yükleme Hatası',
-        message: 'Bilanço verileri yüklenirken hata oluştu. Lütfen tekrar deneyin.',
+        message: 'Bilanço verileri yüklenirken hata oluştu. API sunucusunun çalıştığından emin olun.',
         onClose: () => setAlertConfig({ isOpen: false })
       });
       
@@ -205,6 +219,7 @@ const MultiBalanceAnalysis = () => {
     
     try {
       console.log('🔍 Analiz başlatılıyor...', selectedBalances.length, 'bilanço seçili');
+      console.log('📋 Seçili bilançolar:', selectedBalances);
       
       // Kolon başlıklarını oluştur
       const headers = [];
@@ -225,37 +240,132 @@ const MultiBalanceAnalysis = () => {
           const balanceDetail = await BalanceSheetAPI.getBalanceSheetDetail(balance.id);
           
           console.log(`🔍 Bilanço ${balance.id} API yanıtı:`, balanceDetail);
+          console.log(`🔍 Yapı analizi:`, {
+            balanceDetail_keys: Object.keys(balanceDetail || {}),
+            has_detected_data: !!balanceDetail.detected_data,
+            detected_data_keys: balanceDetail.detected_data ? Object.keys(balanceDetail.detected_data) : 'yok',
+            has_balance_sheet: !!balanceDetail.balance_sheet,
+            balance_sheet_keys: balanceDetail.balance_sheet ? Object.keys(balanceDetail.balance_sheet) : 'yok',
+            has_items_direct: !!balanceDetail.items,
+            items_length: balanceDetail.items ? balanceDetail.items.length : 'yok',
+            balance_sheet_raw_pdf_data: balanceDetail.balance_sheet ? !!balanceDetail.balance_sheet.raw_pdf_data : 'yok'
+          });
           
-          // Ana veri yapısını kontrol et
-          if (balanceDetail && balanceDetail.detected_data && balanceDetail.detected_data.items) {
-            console.log(`✅ Bilanço ${balance.id} detected_data.items bulundu:`, balanceDetail.detected_data.items.length, 'kalem');
+          // 1. Önce items array'ini direkt kontrol et (API'den gelen standart format)
+          if (balanceDetail && balanceDetail.items && Array.isArray(balanceDetail.items) && balanceDetail.items.length > 0) {
+            console.log(`✅ Bilanço ${balance.id} için items array bulundu:`, balanceDetail.items.length, 'kalem');
             
-            // API'den gelen veriler
-            balanceDetail.detected_data.items.forEach((item, index) => {
-              console.log(`📋 Kalem ${index}:`, item);
+            balanceDetail.items.forEach((item, index) => {
+              console.log(`📋 API Item ${index}:`, item);
               
-              // Hesap kodunu al (çeşitli alanlardan dene)
-              const accountCode = item.code || item.definition || item.account_code || item.id || item.account_number || '';
-              const accountName = item.description || item.name || item.account_name || item.title || accountCode;
+              const accountCode = item.account_code || item.code || item.definition || '';
+              const accountName = item.account_name || item.description || item.name || accountCode;
               
               console.log(`🔍 Parse edilen kod: "${accountCode}", isim: "${accountName}"`);
               
-              // Hesap kategorisini belirle
               let category = 'Aktif';
               if (accountCode && (accountCode.startsWith('P.') || accountCode.toLowerCase().includes('pasif'))) {
                 category = 'Pasif';
               }
               
-              // Eğer hesap kodu boşsa ve isim varsa, isimden kategori belirle
-              if (!accountCode && accountName) {
-                if (accountName.toLowerCase().includes('pasif') || 
-                    accountName.toLowerCase().includes('borç') || 
-                    accountName.includes('kaynak')) {
-                  category = 'Pasif';
-                }
+              const itemKey = accountCode || accountName || `api_item_${index}`;
+              let existingItem = processedData.find(existing => existing.code === itemKey);
+              
+              if (!existingItem && (accountCode || accountName)) {
+                existingItem = {
+                  code: itemKey,
+                  name: formatAccountName(accountName),
+                  category: category,
+                  isGroup: /^[A-P]\.\d*$/.test(accountCode) && accountCode.split('.').length === 2,
+                  isSubGroup: /^[A-P]\.\d+\.\d*$/.test(accountCode) && accountCode.split('.').length === 3
+                };
+                processedData.push(existingItem);
+                console.log(`➕ API'den yeni kalem eklendi: ${existingItem.code} - ${existingItem.name} (${existingItem.category})`);
               }
               
-              // Bu hesabın daha önceden eklenip eklenmediğini kontrol et
+              if (existingItem) {
+                balance.years.forEach(year => {
+                  const columnKey = `${balance.year}-${balance.period}-${year}`;
+                  const yearValue = item.current_amount || item.amount || item[year] || 
+                                   item['2024'] || item['2023'] || item['2022'] || item['2021'] || 0;
+                  
+                  console.log(`💰 ${itemKey} - ${year}: ${yearValue}`);
+                  const numericValue = parseNumericValue(yearValue);
+                  existingItem[columnKey] = numericValue;
+                });
+              }
+            });
+          } 
+          
+          // 2. Items array yoksa balance_sheet.raw_pdf_data kontrol et (PDF'den çıkarılan ham veri)
+          else if (balanceDetail && balanceDetail.balance_sheet && balanceDetail.balance_sheet.raw_pdf_data) {
+            console.log(`📄 Bilanço ${balance.id} için raw_pdf_data kullanılıyor...`);
+            try {
+              const rawData = typeof balanceDetail.balance_sheet.raw_pdf_data === 'string' 
+                ? JSON.parse(balanceDetail.balance_sheet.raw_pdf_data)
+                : balanceDetail.balance_sheet.raw_pdf_data;
+              console.log(`🔍 Raw data yapısı:`, rawData);
+              console.log(`🔍 Raw data keys:`, Object.keys(rawData || {}));
+              
+              if (rawData.items && Array.isArray(rawData.items)) {
+                console.log(`✅ Raw data'dan ${rawData.items.length} kalem bulundu`);
+                
+                rawData.items.forEach((item, index) => {
+                  const accountCode = item.definition || item.code || item.account_code || item.id || '';
+                  const accountName = item.account_name || item.description || item.name || accountCode;
+                  
+                  let category = 'Aktif';
+                  if (accountCode && (accountCode.startsWith('P.') || accountCode.toLowerCase().includes('pasif'))) {
+                    category = 'Pasif';
+                  }
+                  
+                  const itemKey = accountCode || accountName || `raw_item_${index}`;
+                  let existingItem = processedData.find(existing => existing.code === itemKey);
+                  
+                  if (!existingItem && (accountCode || accountName)) {
+                    existingItem = {
+                      code: itemKey,
+                      name: formatAccountName(accountName),
+                      category: category,
+                      isGroup: /^[A-P]\.\d*$/.test(accountCode) && accountCode.split('.').length === 2,
+                      isSubGroup: /^[A-P]\.\d+\.\d*$/.test(accountCode) && accountCode.split('.').length === 3
+                    };
+                    processedData.push(existingItem);
+                    console.log(`➕ Raw data'dan yeni kalem eklendi: ${existingItem.code} - ${existingItem.name} (${existingItem.category})`);
+                  }
+                  
+                  if (existingItem) {
+                    balance.years.forEach(year => {
+                      const columnKey = `${balance.year}-${balance.period}-${year}`;
+                      const yearValue = item[year] || item['2024'] || item['2023'] || item['2022'] || item['2021'] || 0;
+                      const numericValue = parseNumericValue(yearValue);
+                      existingItem[columnKey] = numericValue;
+                    });
+                  }
+                });
+              }
+            } catch (parseError) {
+              console.error(`❌ Raw PDF data parse edilemedi:`, parseError);
+            }
+          }
+          
+          // 3. Son olarak detected_data.items kontrol et (Gemini analiz sonucu)  
+          else if (balanceDetail && balanceDetail.detected_data && balanceDetail.detected_data.items) {
+            console.log(`✅ Bilanço ${balance.id} detected_data.items bulundu:`, balanceDetail.detected_data.items.length, 'kalem');
+            
+            balanceDetail.detected_data.items.forEach((item, index) => {
+              console.log(`📋 Kalem ${index}:`, item);
+              
+              const accountCode = item.code || item.definition || item.account_code || item.id || item.account_number || '';
+              const accountName = item.description || item.name || item.account_name || item.title || accountCode;
+              
+              console.log(`🔍 Parse edilen kod: "${accountCode}", isim: "${accountName}"`);
+              
+              let category = 'Aktif';
+              if (accountCode && (accountCode.startsWith('P.') || accountCode.toLowerCase().includes('pasif'))) {
+                category = 'Pasif';
+              }
+              
               const itemKey = accountCode || accountName || `item_${index}`;
               let existingItem = processedData.find(existing => existing.code === itemKey);
               
@@ -268,115 +378,58 @@ const MultiBalanceAnalysis = () => {
                   isSubGroup: /^[A-P]\.\d+\.\d*$/.test(accountCode) && accountCode.split('.').length === 3
                 };
                 processedData.push(existingItem);
-                console.log(`➕ Yeni kalem eklendi: ${existingItem.code} - ${existingItem.name} (${existingItem.category})`);
+                console.log(`➕ Detected data'dan yeni kalem eklendi: ${existingItem.code} - ${existingItem.name} (${existingItem.category})`);
               }
               
-              // Her yıl için veri ekle
               if (existingItem) {
                 balance.years.forEach(year => {
                   const columnKey = `${balance.year}-${balance.period}-${year}`;
-                  
-                  // API'den gelen veriyi kullan, öncelik sırasına göre
                   const yearValue = item[year] || item.current_amount || item.amount || 
                                    item.value || item.current_value || item.balance ||
                                    item['2024'] || item['2023'] || item['2022'] || item['2021'] || 0;
                   
                   console.log(`💰 ${itemKey} - ${year}: ${yearValue}`);
-                  
-                  // parseNumericValue fonksiyonunu kullan
                   const numericValue = parseNumericValue(yearValue);
                   existingItem[columnKey] = numericValue;
                 });
               }
             });
-          } else if (balanceDetail && balanceDetail.balance_sheet) {
-            console.log(`📄 Bilanço ${balance.id} için balance_sheet yapısı kontrol ediliyor...`);
+          } 
+          
+          // 4. Hiçbir format bulunamadıysa demo veri ekle (sadece demo modda)
+          else {
+            console.warn(`⚠️ Bilanço ${balance.id} için hiçbir veri formatı bulunamadı!`);
+            console.log(`🔍 Mevcut veri yapısı:`, {
+              detected_data: !!balanceDetail.detected_data,
+              balance_sheet: !!balanceDetail.balance_sheet,
+              items: !!balanceDetail.items,
+              keys: Object.keys(balanceDetail || {})
+            });
             
-            // balance_sheet.detected_data kontrol et
-            if (balanceDetail.balance_sheet.detected_data && balanceDetail.balance_sheet.detected_data.items) {
-              console.log(`✅ balance_sheet.detected_data.items bulundu:`, balanceDetail.balance_sheet.detected_data.items.length, 'kalem');
+            // API bağlantı hatası varsa demo veri ekle
+            if (apiError && apiError.includes('Demo modda')) {
+              console.log(`🛠️ Demo mod aktif - demo veri ekleniyor...`);
               
-              balanceDetail.balance_sheet.detected_data.items.forEach((item, index) => {
-                const accountCode = item.code || item.definition || item.account_code || item.id || '';
-                const accountName = item.description || item.name || item.account_name || accountCode;
-                
-                let category = 'Aktif';
-                if (accountCode && (accountCode.startsWith('P.') || accountCode.toLowerCase().includes('pasif'))) {
-                  category = 'Pasif';
-                }
-                
-                const itemKey = accountCode || accountName || `item_${index}`;
-                let existingItem = processedData.find(existing => existing.code === itemKey);
-                
-                if (!existingItem && (accountCode || accountName)) {
-                  existingItem = {
-                    code: itemKey,
-                    name: formatAccountName(accountName),
-                    category: category,
-                    isGroup: /^[A-P]\.\d*$/.test(accountCode) && accountCode.split('.').length === 2,
-                    isSubGroup: /^[A-P]\.\d+\.\d*$/.test(accountCode) && accountCode.split('.').length === 3
-                  };
+              const demoItems = [
+                { code: 'A.1.1.1', name: 'KASA', category: 'Aktif', isGroup: false, isSubGroup: false },
+                { code: 'A.1.3.1', name: 'ALICILAR', category: 'Aktif', isGroup: false, isSubGroup: false },
+                { code: 'P.1.1.1', name: 'BANKA KREDİLERİ', category: 'Pasif', isGroup: false, isSubGroup: false }
+              ];
+              
+              demoItems.forEach(demoItem => {
+                let existingItem = processedData.find(existing => existing.code === demoItem.code);
+                if (!existingItem) {
+                  existingItem = { ...demoItem };
                   processedData.push(existingItem);
+                  console.log(`➕ Demo kalem eklendi: ${existingItem.code} - ${existingItem.name}`);
                 }
                 
-                if (existingItem) {
-                  balance.years.forEach(year => {
-                    const columnKey = `${balance.year}-${balance.period}-${year}`;
-                    const yearValue = item[year] || item.current_amount || item.amount || 0;
-                    const numericValue = parseNumericValue(yearValue);
-                    existingItem[columnKey] = numericValue;
-                  });
-                }
+                balance.years.forEach(year => {
+                  const columnKey = `${balance.year}-${balance.period}-${year}`;
+                  existingItem[columnKey] = Math.floor(Math.random() * 1000000);
+                });
               });
-            } else if (balanceDetail.balance_sheet.raw_pdf_data) {
-              // raw_pdf_data içinde items var
-              console.log(`📄 Bilanço ${balance.id} için raw_pdf_data kullanılıyor...`);
-              try {
-                const rawData = JSON.parse(balanceDetail.balance_sheet.raw_pdf_data);
-                console.log(`🔍 Raw data yapısı:`, rawData);
-                
-                if (rawData.items && Array.isArray(rawData.items)) {
-                  console.log(`✅ Raw data'dan ${rawData.items.length} kalem bulundu`);
-                  
-                  rawData.items.forEach((item, index) => {
-                    const accountCode = item.definition || item.code || item.account_code || item.id || '';
-                    const accountName = item.account_name || item.description || item.name || accountCode;
-                    
-                    let category = 'Aktif';
-                    if (accountCode && (accountCode.startsWith('P.') || accountCode.toLowerCase().includes('pasif'))) {
-                      category = 'Pasif';
-                    }
-                    
-                    const itemKey = accountCode || accountName || `raw_item_${index}`;
-                    let existingItem = processedData.find(existing => existing.code === itemKey);
-                    
-                    if (!existingItem && (accountCode || accountName)) {
-                      existingItem = {
-                        code: itemKey,
-                        name: formatAccountName(accountName),
-                        category: category,
-                        isGroup: /^[A-P]\.\d*$/.test(accountCode) && accountCode.split('.').length === 2,
-                        isSubGroup: /^[A-P]\.\d+\.\d*$/.test(accountCode) && accountCode.split('.').length === 3
-                      };
-                      processedData.push(existingItem);
-                    }
-                    
-                    if (existingItem) {
-                      balance.years.forEach(year => {
-                        const columnKey = `${balance.year}-${balance.period}-${year}`;
-                        const yearValue = item[year] || item['2024'] || item['2023'] || item['2022'] || item['2021'] || 0;
-                        const numericValue = parseNumericValue(yearValue);
-                        existingItem[columnKey] = numericValue;
-                      });
-                    }
-                  });
-                }
-              } catch (parseError) {
-                console.error(`❌ Raw PDF data parse edilemedi:`, parseError);
-              }
             }
-          } else {
-            console.warn(`⚠️ Bilanço ${balance.id} için veri bulunamadı. API yanıtı:`, balanceDetail);
           }
         } catch (error) {
           console.error(`❌ Bilanço ${balance.id} detayı alınırken hata:`, error);
@@ -390,27 +443,27 @@ const MultiBalanceAnalysis = () => {
         }
       }
       
+      console.log('📈 TOPLAM işlenen hesap kalemi:', processedData.length);
+      console.log('🔧 İşlenen veri özeti:', processedData.map(item => ({ code: item.code, name: item.name, category: item.category })));
+      
       // Veri kontrolü ve hata yönetimi
       if (processedData.length === 0) {
-        console.log('⚠️ Analiz için veri bulunamadı');
         setAlertConfig({
           isOpen: true,
           type: 'warning',
           title: 'Analiz Verisi Bulunamadı',
-          message: 'Seçilen bilançolarda analiz yapılabilir veri bulunamadı. Lütfen bilançoların doğru formatlandığından emin olun.',
+          message: 'Seçilen bilançolarda analiz yapılabilir veri bulunamadı. Bilançoların PDF\'den doğru analiz edildiğinden veya manuel olarak girildiğinden emin olun.',
           onClose: () => setAlertConfig({ isOpen: false })
         });
         setLoading(false);
         return;
       }
       
-      console.log('📈 Toplam işlenen hesap kalemi:', processedData.length);
       console.log('🔧 Hiyerarşi oluşturuluyor...');
-      
       buildHierarchies(processedData);
       calculateTotals(processedData, headers);
       setShowResults(true);
-      
+
       console.log('✅ Analiz tamamlandı!');
       
     } catch (error) {
@@ -429,32 +482,123 @@ const MultiBalanceAnalysis = () => {
 
   // Hiyerarşik yapı oluşturma
   const buildHierarchies = (data) => {
+    console.log('🔧 buildHierarchies çağrıldı, data:', data.length, 'kalem');
+    
     const activeItems = data.filter(item => item.category === 'Aktif');
     const passiveItems = data.filter(item => item.category === 'Pasif');
     
+    console.log('📊 Aktif kalemler:', activeItems.length);
+    console.log('📊 Pasif kalemler:', passiveItems.length);
+    
     const buildHierarchy = (items) => {
-      const groups = items.filter(item => item.isGroup);
-      const subGroups = items.filter(item => item.isSubGroup);
-      const normalItems = items.filter(item => !item.isGroup && !item.isSubGroup);
+      console.log('🏗️ Hiyerarşi oluşturuluyor:', items.length, 'kalem için');
       
-      return groups.map(group => ({
-        ...group,
-        id: group.code,
-        description: group.name,
-        children: [
-          ...subGroups.filter(sub => sub.code.startsWith(group.code.split('.')[0])),
-          ...normalItems.filter(item => item.code.startsWith(group.code.split('.')[0]))
-        ].map(child => ({
-          ...child,
-          id: child.code,
-          description: child.name,
+      // Gerçek hiyerarşik yapı oluştur
+      const hierarchy = [];
+      const processedCodes = new Set();
+      
+      // Ana grupları bul (A.1, A.2, P.1, P.2, vs.)
+      const mainGroups = items.filter(item => 
+        item.code && /^[A-P]\.\d+$/.test(item.code) && !processedCodes.has(item.code)
+      );
+      
+      console.log('🏗️ Ana gruplar bulundu:', mainGroups.length);
+      
+      mainGroups.forEach(group => {
+        processedCodes.add(group.code);
+        const groupItem = {
+          ...group,
+          id: group.code || group.name || Math.random().toString(),
+          description: group.name,
           children: []
-        }))
-      }));
+        };
+        
+        // Alt grupları bul (A.1.1, A.1.2, vs.)
+        const subGroups = items.filter(item => 
+          item.code && 
+          item.code.startsWith(group.code + '.') && 
+          /^[A-P]\.\d+\.\d+$/.test(item.code) &&
+          !processedCodes.has(item.code)
+        );
+        
+        subGroups.forEach(subGroup => {
+          processedCodes.add(subGroup.code);
+          const subGroupItem = {
+            ...subGroup,
+            id: subGroup.code || subGroup.name || Math.random().toString(),
+            description: subGroup.name,
+            children: []
+          };
+          
+          // Detay hesapları bul (A.1.1.1, A.1.1.2, vs.)
+          const detailAccounts = items.filter(item => 
+            item.code && 
+            item.code.startsWith(subGroup.code + '.') &&
+            !processedCodes.has(item.code)
+          );
+          
+          detailAccounts.forEach(detail => {
+            processedCodes.add(detail.code);
+            subGroupItem.children.push({
+              ...detail,
+              id: detail.code || detail.name || Math.random().toString(),
+              description: detail.name,
+              children: []
+            });
+          });
+          
+          groupItem.children.push(subGroupItem);
+        });
+        
+        // Doğrudan ana gruba bağlı hesapları bul
+        const directAccounts = items.filter(item => 
+          item.code && 
+          item.code.startsWith(group.code + '.') && 
+          !/^[A-P]\.\d+\.\d+\./.test(item.code) &&
+          !processedCodes.has(item.code)
+        );
+        
+        directAccounts.forEach(account => {
+          processedCodes.add(account.code);
+          groupItem.children.push({
+            ...account,
+            id: account.code || account.name || Math.random().toString(),
+            description: account.name,
+            children: []
+          });
+        });
+        
+        hierarchy.push(groupItem);
+      });
+      
+      // İşlenmemiş tüm kalemleri flat olarak ekle
+      const unprocessedItems = items.filter(item => 
+        !processedCodes.has(item.code || item.name)
+      );
+      
+      console.log('📋 İşlenmemiş kalemler:', unprocessedItems.length);
+      
+      unprocessedItems.forEach(item => {
+        hierarchy.push({
+          ...item,
+          id: item.code || item.name || Math.random().toString(),
+          description: item.name,
+          children: []
+        });
+      });
+      
+      console.log('✅ Hiyerarşi tamamlandı:', hierarchy.length, 'ana item');
+      return hierarchy;
     };
     
-    setActiveHierarchy(buildHierarchy(activeItems));
-    setPassiveHierarchy(buildHierarchy(passiveItems));
+    const activeH = buildHierarchy(activeItems);
+    const passiveH = buildHierarchy(passiveItems);
+    
+    console.log('✅ Aktif hiyerarşi oluşturuldu:', activeH.length);
+    console.log('✅ Pasif hiyerarşi oluşturuldu:', passiveH.length);
+    
+    setActiveHierarchy(activeH);
+    setPassiveHierarchy(passiveH);
   };
 
   // Toplam hesaplama
@@ -592,6 +736,14 @@ const MultiBalanceAnalysis = () => {
               <div>
                 <h1 className="text-3xl font-bold">Çoklu Bilanço Analizi</h1>
                 <p className="text-indigo-100 mt-1">Birden fazla bilançoyu detaylı karşılaştırın ve analiz edin</p>
+                {apiError && (
+                  <p className="text-yellow-300 text-sm mt-2 flex items-center">
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.728-.833-2.498 0L3.316 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                    {apiError}
+                  </p>
+                )}
               </div>
             </div>
             <Link 
@@ -605,26 +757,6 @@ const MultiBalanceAnalysis = () => {
             </Link>
           </div>
         </div>
-
-        {/* API Hata Bilgilendirme */}
-        {apiError && (
-          <div className="bg-amber-50 border-l-4 border-amber-400 text-amber-700 p-4 mb-6" role="alert">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-amber-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="font-bold">API Bağlantı Uyarısı</p>
-                <p>{apiError}</p>
-                <p className="mt-2 text-sm">
-                  Sunucu bağlantısı kurulamadığında sistem otomatik olarak demo modda çalışır.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {!showResults && (
           <div className="bg-white/80 backdrop-blur-sm shadow-xl rounded-2xl border border-gray-200/50 p-6 mb-8">

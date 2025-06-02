@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { BalanceSheetAPI } from '../api/index';
 
 const BalanceSheetPreview = () => {
@@ -21,208 +21,6 @@ const BalanceSheetPreview = () => {
   // Dinamik toplamlar için state
   const [calculatedTotals, setCalculatedTotals] = useState({});
 
-  useEffect(() => {
-    console.log('🚀 BalanceSheetPreview component yüklendi');
-    fetchPreviewData();
-  }, []);
-
-  // Preview verisi için localStorage'dan oku veya state'den al
-  const fetchPreviewData = async () => {
-    try {
-      setLoading(true);
-      console.log('📱 Preview verisi alınıyor...');
-      
-      // State'den analiz verilerini al
-      const stateData = location.state;
-      let analysisData = null;
-      
-      if (stateData && stateData.analysisData) {
-        console.log('📄 State\'den analiz verisi alındı:', stateData.analysisData);
-        analysisData = stateData.analysisData;
-      } else {
-        // localStorage'dan veri okumayı dene
-        console.log('📦 State bulunamadı, localStorage kontrol ediliyor...');
-        const previewData = localStorage.getItem('pdfAnalysisData');
-        if (!previewData) {
-          throw new Error('Preview verisi bulunamadı. Lütfen PDF analizi yapın.');
-        }
-        analysisData = JSON.parse(previewData);
-        console.log('✅ Preview verisi localStorage\'dan alındı:', analysisData);
-      }
-      
-      // Preview verisini uygun formata dönüştür
-      const formattedData = {
-        id: 'preview',
-        company_name: analysisData.detected_data?.company_name || 'Preview Şirketi',
-        tax_number: analysisData.detected_data?.tax_number || '',
-        year: analysisData.detected_data?.year || new Date().getFullYear(),
-        period: analysisData.detected_data?.period || 'YILLIK',
-        creation_date: new Date().toISOString().split('T')[0],
-        notes: 'PDF Analiz Önizlemesi',
-        detected_data: analysisData.detected_data || { items: [] }
-      };
-      
-      setBalanceSheetData(formattedData);
-      setError(null);
-    } catch (err) {
-      console.error('❌ Preview verisi alınamadı:', err);
-      setError('Preview verisi yüklenirken bir hata oluştu: ' + err.message);
-      setBalanceSheetData(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Bilanço verisini getir
-  const fetchBalanceSheetData = async () => {
-    try {
-      setLoading(true);
-      const response = await BalanceSheetAPI.getBalanceSheetDetail(id);
-      console.log('✅ Bilanço verisi alındı:', response);
-      
-      // API'den gelen veri yapısını kontrol et
-      if (response && response.balance_sheet) {
-        const balanceSheet = response.balance_sheet;
-        const items = response.items || [];
-        
-        // raw_pdf_data'yı parse et
-        let parsedData = null;
-        let detectedItems = [];
-        
-        if (balanceSheet.raw_pdf_data) {
-          try {
-            parsedData = JSON.parse(balanceSheet.raw_pdf_data);
-            console.log('📄 Raw PDF data parse edildi:', parsedData);
-            
-            // Farklı formatları handle et
-            if (parsedData.items && parsedData.items.balance_data) {
-              // Format 1: {items: {balance_data: [...]}}
-              detectedItems = parsedData.items.balance_data;
-              console.log('✅ Format 1 - items.balance_data kullanıldı:', detectedItems.length);
-            } else if (parsedData.balance_data) {
-              // Format 2: {balance_data: [...]}
-              detectedItems = parsedData.balance_data;
-              console.log('✅ Format 2 - balance_data kullanıldı:', detectedItems.length);
-            } else if (parsedData.detected_data && parsedData.detected_data.items) {
-              // Format 3: {detected_data: {items: [...]}} - Preview format
-              detectedItems = parsedData.detected_data.items;
-              console.log('✅ Format 3 - detected_data.items kullanıldı:', detectedItems.length);
-            } else if (Array.isArray(parsedData)) {
-              // Format 4: doğrudan array
-              detectedItems = parsedData;
-              console.log('✅ Format 4 - doğrudan array kullanıldı:', detectedItems.length);
-            } else if (parsedData.items && Array.isArray(parsedData.items)) {
-              // Format 5: {items: [...]}
-              detectedItems = parsedData.items;
-              console.log('✅ Format 5 - items array kullanıldı:', detectedItems.length);
-            } else {
-              console.warn('⚠️ Bilinmeyen raw_pdf_data formatı:', Object.keys(parsedData));
-            }
-          } catch (parseError) {
-            console.error('❌ Raw PDF data parse hatası:', parseError);
-          }
-        }
-        
-        // Veriyi uygun formata dönüştür
-        const formattedData = {
-          id: balanceSheet.id,
-          company_name: balanceSheet.company_name,
-          tax_number: balanceSheet.tax_number,
-          year: balanceSheet.year,
-          period: balanceSheet.period,
-          creation_date: balanceSheet.creation_date?.split(' ')[0], // Sadece tarih kısmı
-          notes: balanceSheet.notes,
-          detected_data: {
-            company_name: balanceSheet.company_name,
-            tax_number: balanceSheet.tax_number,
-            items: detectedItems
-          }
-        };
-        
-        setBalanceSheetData(formattedData);
-        setError(null);
-      } else {
-        throw new Error('Veri yapısı beklenenden farklı');
-      }
-    } catch (err) {
-      console.error('❌ Bilanço verisi alınamadı:', err);
-      setError('Bilanço verisi yüklenirken bir hata oluştu: ' + err.message);
-      setBalanceSheetData(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Hiyerarşileri güncelleyen useEffect
-  useEffect(() => {
-    const updateHierarchies = async () => {
-      if (balanceSheetData?.detected_data?.items?.length > 0) {
-        const items = balanceSheetData.detected_data.items;
-        const activeH = await buildHierarchy(items, 'active');
-        const passiveH = await buildHierarchy(items, 'passive');
-        setActiveHierarchy(activeH);
-        setPassiveHierarchy(passiveH);
-        
-        // Toplamları hesapla
-        calculateDynamicTotals(activeH, passiveH, items);
-      }
-    };
-    
-    updateHierarchies();
-  }, [balanceSheetData, showEmptyRows]);
-
-  // Dinamik toplam hesaplama fonksiyonu
-  const calculateDynamicTotals = (activeHierarchy, passiveHierarchy, items) => {
-    if (!items || items.length === 0) {
-      setCalculatedTotals({});
-      return;
-    }
-
-    // Yıl alanlarını bul
-    const yearFields = Object.keys(items[0]).filter(key => /^\d{4}(_E)?$/.test(key));
-    const totals = {};
-
-    yearFields.forEach(year => {
-      // Aktif toplamı hesapla - sadece A.1 ve A.2 ana kategorilerini topla
-      const aktifToplam = calculateMainCategoryTotalFromItems(items, year, ['A.1', 'A.2']);
-      
-      // Pasif toplamı hesapla - sadece P.1, P.2 ve P.3 ana kategorilerini topla  
-      const pasifToplam = calculateMainCategoryTotalFromItems(items, year, ['P.1', 'P.2', 'P.3']);
-
-      totals[year] = {
-        aktif: aktifToplam,
-        pasif: pasifToplam,
-        fark: aktifToplam - pasifToplam,
-        dengeli: Math.abs(aktifToplam - pasifToplam) < 0.01
-      };
-    });
-
-    console.log('📊 Dinamik toplamlar hesaplandı:', totals);
-    setCalculatedTotals(totals);
-  };
-
-  // Ana kategori toplamlarını orijinal PDF verilerinden hesapla
-  const calculateMainCategoryTotalFromItems = (items, year, allowedCategories) => {
-    let total = 0;
-
-    items.forEach(item => {
-      const definition = item.definition || '';
-      
-      if (allowedCategories.includes(definition) && item[year] && item[year] !== '-') {
-        // Türkçe formatından sayıya dönüştür: "3.882.837,70" -> 3882837.70
-        const valueStr = String(item[year]).replace(/\./g, '').replace(',', '.');
-        const value = parseFloat(valueStr);
-        
-        if (!isNaN(value)) {
-          total += value;
-          console.log(`➕ ${definition} (${year}): "${item[year]}" -> ${value}`);
-        }
-      }
-    });
-
-    return total;
-  };
-
   // Formatlanmış para değeri döndür
   const formatCurrency = (amount) => {
     if (typeof amount !== 'number' || isNaN(amount)) {
@@ -235,7 +33,7 @@ const BalanceSheetPreview = () => {
   };
 
   // Hesap adı formatlama fonksiyonu
-  const formatAccountName = (name) => {
+  const formatAccountName = useCallback((name) => {
     if (!name || typeof name !== 'string') return name;
     
     // Başlangıçta tüm string'i temizle
@@ -316,10 +114,10 @@ const BalanceSheetPreview = () => {
     return cleanName.toLowerCase().replace(/(^|\s|[-.()])[a-züğıöşçA-ZÜĞIÖŞÇıI]/g, (match) => {
       return match.toUpperCase();
     });
-  };
+  }, []);
 
   // Tam hesap listesi oluştur (PDF verisi + hesap planı)
-  const buildCompleteItemList = async (pdfItems, type) => {
+  const buildCompleteItemList = useCallback(async (pdfItems, type) => {
     if (!showEmptyRows) {
       return pdfItems;
     }
@@ -375,10 +173,10 @@ const BalanceSheetPreview = () => {
       console.error('❌ Hesap planı alınamadı:', error);
       return pdfItems;
     }
-  };
+  }, [showEmptyRows, formatAccountName]);
 
   // Hiyerarşik yapı oluşturma
-  const buildHierarchy = async (items, type) => {
+  const buildHierarchy = useCallback(async (items, type) => {
     const completeItems = await buildCompleteItemList(items, type);
     
     const filteredItems = completeItems.filter(item => {
@@ -417,7 +215,129 @@ const BalanceSheetPreview = () => {
     });
 
     return hierarchy;
-  };
+  }, [buildCompleteItemList]);
+
+  // Ana kategori toplamlarını orijinal PDF verilerinden hesapla
+  const calculateMainCategoryTotalFromItems = useCallback((items, year, allowedCategories) => {
+    let total = 0;
+
+    items.forEach(item => {
+      const definition = item.definition || '';
+      
+      if (allowedCategories.includes(definition) && item[year] && item[year] !== '-') {
+        // Türkçe formatından sayıya dönüştür: "3.882.837,70" -> 3882837.70
+        const valueStr = String(item[year]).replace(/\./g, '').replace(',', '.');
+        const value = parseFloat(valueStr);
+        
+        if (!isNaN(value)) {
+          total += value;
+          console.log(`➕ ${definition} (${year}): "${item[year]}" -> ${value}`);
+        }
+      }
+    });
+
+    return total;
+  }, []);
+
+  // Dinamik toplam hesaplama fonksiyonu
+  const calculateDynamicTotals = useCallback((activeHierarchy, passiveHierarchy, items) => {
+    if (!items || items.length === 0) {
+      setCalculatedTotals({});
+      return;
+    }
+
+    // Yıl alanlarını bul
+    const yearFields = Object.keys(items[0]).filter(key => /^\d{4}(_E)?$/.test(key));
+    const totals = {};
+
+    yearFields.forEach(year => {
+      // Aktif toplamı hesapla - sadece A.1 ve A.2 ana kategorilerini topla
+      const aktifToplam = calculateMainCategoryTotalFromItems(items, year, ['A.1', 'A.2']);
+      
+      // Pasif toplamı hesapla - sadece P.1, P.2 ve P.3 ana kategorilerini topla  
+      const pasifToplam = calculateMainCategoryTotalFromItems(items, year, ['P.1', 'P.2', 'P.3']);
+
+      totals[year] = {
+        aktif: aktifToplam,
+        pasif: pasifToplam,
+        fark: aktifToplam - pasifToplam,
+        dengeli: Math.abs(aktifToplam - pasifToplam) < 0.01
+      };
+    });
+
+    console.log('📊 Dinamik toplamlar hesaplandı:', totals);
+    setCalculatedTotals(totals);
+  }, [calculateMainCategoryTotalFromItems]);
+
+  // Preview verisi için localStorage'dan oku veya state'den al
+  const fetchPreviewData = useCallback(async () => {
+    try {
+      setLoading(true);
+      console.log('📱 Preview verisi alınıyor...');
+      
+      // State'den analiz verilerini al
+      const stateData = location.state;
+      let analysisData = null;
+      
+      if (stateData && stateData.analysisData) {
+        console.log('📄 State\'den analiz verisi alındı:', stateData.analysisData);
+        analysisData = stateData.analysisData;
+      } else {
+        // localStorage'dan veri okumayı dene
+        console.log('📦 State bulunamadı, localStorage kontrol ediliyor...');
+        const previewData = localStorage.getItem('pdfAnalysisData');
+        if (!previewData) {
+          throw new Error('Preview verisi bulunamadı. Lütfen PDF analizi yapın.');
+        }
+        analysisData = JSON.parse(previewData);
+        console.log('✅ Preview verisi localStorage\'dan alındı:', analysisData);
+      }
+      
+      // Preview verisini uygun formata dönüştür
+      const formattedData = {
+        id: 'preview',
+        company_name: analysisData.detected_data?.company_name || 'Preview Şirketi',
+        tax_number: analysisData.detected_data?.tax_number || '',
+        year: analysisData.detected_data?.year || new Date().getFullYear(),
+        period: analysisData.detected_data?.period || 'YILLIK',
+        creation_date: new Date().toISOString().split('T')[0],
+        notes: 'PDF Analiz Önizlemesi',
+        detected_data: analysisData.detected_data || { items: [] }
+      };
+      
+      setBalanceSheetData(formattedData);
+      setError(null);
+    } catch (err) {
+      console.error('❌ Preview verisi alınamadı:', err);
+      setError('Preview verisi yüklenirken bir hata oluştu: ' + err.message);
+      setBalanceSheetData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [location.state]);
+
+  useEffect(() => {
+    console.log('🚀 BalanceSheetPreview component yüklendi');
+    fetchPreviewData();
+  }, [fetchPreviewData]);
+
+  // Hiyerarşileri güncelleyen useEffect
+  useEffect(() => {
+    const updateHierarchies = async () => {
+      if (balanceSheetData?.detected_data?.items?.length > 0) {
+        const items = balanceSheetData.detected_data.items;
+        const activeH = await buildHierarchy(items, 'active');
+        const passiveH = await buildHierarchy(items, 'passive');
+        setActiveHierarchy(activeH);
+        setPassiveHierarchy(passiveH);
+        
+        // Toplamları hesapla
+        calculateDynamicTotals(activeH, passiveH, items);
+      }
+    };
+    
+    updateHierarchies();
+  }, [balanceSheetData, showEmptyRows, buildHierarchy, calculateDynamicTotals]);
 
   const toggleItem = (itemId) => {
     setExpandedItems(prev => ({
@@ -544,7 +464,7 @@ const BalanceSheetPreview = () => {
     return rows;
   };
 
-  const saveBalanceSheet = async () => {
+  const saveBalanceSheet = useCallback(async () => {
     try {
       setSaving(true);
       
@@ -571,7 +491,7 @@ const BalanceSheetPreview = () => {
     } finally {
       setSaving(false);
     }
-  };
+  }, [balanceSheetData, location.state?.formData, navigate]);
 
   if (loading) {
     return (
