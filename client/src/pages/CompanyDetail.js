@@ -123,7 +123,7 @@ const CompanyDetail = () => {
         showCancel: true,
         onConfirm: () => {
           setAlertConfig({ isOpen: false });
-          navigate('/balance-sheets/new');
+          navigate('/balance-sheets');
         },
         onClose: () => setAlertConfig({ isOpen: false })
       });
@@ -139,7 +139,10 @@ const CompanyDetail = () => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
         </svg>
       ),
-      action: () => navigate('/balance-sheets/new'),
+      action: () => {
+        setShowQuickActions(false);
+        navigate('/balance-sheets');
+      },
       color: 'bg-green-600 hover:bg-green-700'
     },
     {
@@ -149,7 +152,10 @@ const CompanyDetail = () => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
         </svg>
       ),
-      action: () => navigate('/balance-sheets'),
+      action: () => {
+        setShowQuickActions(false);
+        navigate('/balance-sheets');
+      },
       color: 'bg-blue-600 hover:bg-blue-700'
     },
     {
@@ -169,13 +175,16 @@ const CompanyDetail = () => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
         </svg>
       ),
-      action: () => setAlertConfig({
-        isOpen: true,
-        type: 'info',
-        title: 'Yakında Gelecek',
-        message: 'Şirket düzenleme özelliği yakında eklenecek.',
-        onClose: () => setAlertConfig({ isOpen: false })
-      }),
+      action: () => {
+        setShowQuickActions(false);
+        setAlertConfig({
+          isOpen: true,
+          type: 'info',
+          title: 'Yakında Gelecek',
+          message: 'Şirket düzenleme özelliği yakında eklenecek.',
+          onClose: () => setAlertConfig({ isOpen: false })
+        });
+      },
       color: 'bg-amber-600 hover:bg-amber-700'
     }
   ];
