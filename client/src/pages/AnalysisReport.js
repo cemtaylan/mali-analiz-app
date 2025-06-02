@@ -603,7 +603,7 @@ const AnalysisReport = () => {
         )}
 
         {/* Modern Header */}
-        <div className="bg-gradient-to-r from-purple-600 to-purple-700 rounded-2xl p-6 mb-8 text-white">
+        <div className="bg-gradient-to-r from-violet-600 to-violet-700 rounded-2xl p-6 mb-8 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <div className="bg-white bg-opacity-20 p-4 rounded-xl mr-4">
@@ -612,8 +612,8 @@ const AnalysisReport = () => {
                 </svg>
               </div>
               <div>
-                <h1 className="text-3xl font-bold">Finansal Analiz Raporu</h1>
-                <p className="text-purple-100 mt-1">
+                <h1 className="text-3xl font-bold text-white">Finansal Analiz Raporu</h1>
+                <p className="text-violet-100 mt-1">
                   {balanceSheet?.company_name || 'Demo Şirket'}
                 </p>
               </div>

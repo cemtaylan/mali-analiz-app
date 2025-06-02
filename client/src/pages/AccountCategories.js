@@ -173,7 +173,7 @@ const AccountCategories = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Modern Header */}
-      <div className="bg-gradient-to-r from-green-600 to-green-700 rounded-2xl p-6 mb-8 text-white">
+      <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-2xl p-6 mb-8 text-white">
         <div className="flex items-center">
           <div className="bg-white bg-opacity-20 p-4 rounded-xl mr-4">
             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -181,8 +181,8 @@ const AccountCategories = () => {
             </svg>
           </div>
           <div>
-            <h1 className="text-3xl font-bold">Tek Düzen Hesap Planı</h1>
-            <p className="text-green-100 mt-1">Türkiye standart hesap planı kategori yapısı</p>
+            <h1 className="text-3xl font-bold text-white">Tek Düzen Hesap Planı</h1>
+            <p className="text-emerald-100 mt-1">Türkiye standart hesap planı kategori yapısı</p>
           </div>
         </div>
       </div>

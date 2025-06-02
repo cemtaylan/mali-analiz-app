@@ -876,7 +876,7 @@ const BalanceSheets = () => {
               </svg>
             </div>
             <div>
-              <h1 className="text-3xl font-bold">Bilanço Yönetimi</h1>
+              <h1 className="text-3xl font-bold text-white">Bilanço Yönetimi</h1>
               <p className="text-blue-100 mt-1">Şirket bilançolarını yönetin ve analiz edin</p>
             </div>
           </div>
