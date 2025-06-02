@@ -141,7 +141,13 @@ const CompanyDetail = () => {
       ),
       action: () => {
         setShowQuickActions(false);
-        navigate('/balance-sheets');
+        // Bilanço yükleme sayfasına git - PDF modal'ı ile
+        navigate('/balance-sheets', { 
+          state: { 
+            openUploadModal: true, 
+            preselectedCompanyId: id 
+          } 
+        });
       },
       color: 'bg-green-600 hover:bg-green-700'
     },
@@ -154,7 +160,14 @@ const CompanyDetail = () => {
       ),
       action: () => {
         setShowQuickActions(false);
-        navigate('/balance-sheets');
+        // PDF yükleme için BalanceSheets sayfasına state ile git
+        navigate('/balance-sheets', { 
+          state: { 
+            openUploadModal: true, 
+            preselectedCompanyId: id,
+            fromCompanyDetail: true 
+          } 
+        });
       },
       color: 'bg-blue-600 hover:bg-blue-700'
     },

@@ -82,7 +82,29 @@ const BalanceSheets = () => {
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [location]);
+
+    // CompanyDetail sayfasından gelen state kontrolleri
+    if (location.state?.openUploadModal) {
+      setShowUploadModal(true);
+      
+      // Öntanımlı şirket ID'si varsa seç
+      if (location.state.preselectedCompanyId) {
+        setCompanyId(location.state.preselectedCompanyId.toString());
+        
+        // Şirket ismini de bul ve ata
+        const selectedCompany = companies.find(comp => 
+          comp.id.toString() === location.state.preselectedCompanyId.toString()
+        );
+        if (selectedCompany) {
+          setCompany(selectedCompany.name);
+          setTaxNumber(selectedCompany.tax_number || '');
+        }
+      }
+      
+      // State'i temizle (tek seferlik işlem)
+      window.history.replaceState({}, document.title);
+    }
+  }, [location, companies]);
 
   // Şirketleri getiren fonksiyon
   const fetchCompanies = async () => {
