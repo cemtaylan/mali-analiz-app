@@ -627,9 +627,15 @@ const MultiBalanceAnalysis = () => {
         )}
 
         {!showResults && (
-          <div className="bg-white/80 backdrop-blur-sm shadow-xl rounded-2xl border border-gray-200/50 p-8 mb-8">
-            <div className="max-w-4xl mx-auto">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Analiz Parametreleri</h2>
+          <div className="bg-white/80 backdrop-blur-sm shadow-xl rounded-2xl border border-gray-200/50 p-6 mb-8">
+            <div className="max-w-7xl mx-auto">
+              <h2 className="text-xl font-bold text-gray-900 mb-6 text-center flex items-center justify-center">
+                <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Analiz Parametreleri
+              </h2>
               
               {/* Loading State için UI */}
               {loading && (
@@ -645,145 +651,152 @@ const MultiBalanceAnalysis = () => {
                 </div>
               )}
               
-              {/* Compact Modern Selection Area */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Compact Selection Area */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Şirket Seçimi */}
-                <div className="space-y-4">
-                  <label className="block text-sm font-semibold text-gray-800">
-                    Şirket Seçimi
-                  </label>
-                  <select
-                    value={selectedCompany}
-                    onChange={(e) => setSelectedCompany(e.target.value)}
-                    disabled={loading || companies.length === 0}
-                    className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 bg-white disabled:bg-gray-50 disabled:cursor-not-allowed"
-                  >
-                    <option value="">
-                      {companies.length === 0 ? 'Şirketler yükleniyor...' : 'Analiz edilecek şirketi seçin...'}
-                    </option>
-                    {companies.map(company => (
-                      <option key={company.id} value={company.name}>
-                        {company.name}
+                <div className="lg:col-span-2 space-y-6">
+                  <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
+                    <label className="block text-sm font-semibold text-blue-900 mb-3 flex items-center">
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                      Şirket Seçimi
+                    </label>
+                    <select
+                      value={selectedCompany}
+                      onChange={(e) => setSelectedCompany(e.target.value)}
+                      disabled={loading || companies.length === 0}
+                      className="w-full p-3 border-2 border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 bg-white disabled:bg-gray-50 disabled:cursor-not-allowed text-sm font-medium"
+                    >
+                      <option value="">
+                        {companies.length === 0 ? 'Şirketler yükleniyor...' : 'Analiz edilecek şirketi seçin...'}
                       </option>
-                    ))}
-                  </select>
-                  
-                  {companies.length === 0 && !loading && (
-                    <p className="text-sm text-red-600">
-                      Şirket verileri yüklenemedi. Lütfen sayfayı yenileyin.
-                    </p>
+                      {companies.map(company => (
+                        <option key={company.id} value={company.name}>
+                          {company.name}
+                        </option>
+                      ))}
+                    </select>
+                    
+                    {companies.length === 0 && !loading && (
+                      <p className="text-xs text-red-600 mt-2">
+                        Şirket verileri yüklenemedi. Lütfen sayfayı yenileyin.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Bilanço Seçimi - Compact Grid */}
+                  {selectedCompany && (
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Karşılaştırılacak Bilançolar (2-3 adet seçin)
+                      </label>
+                      
+                      {availableBalances.length === 0 && !loading ? (
+                        <div className="text-center py-6 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                          <svg className="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <h3 className="text-sm font-medium text-gray-900 mb-1">Bu şirket için bilanço bulunamadı</h3>
+                          <p className="text-xs text-gray-500">Lütfen farklı bir şirket seçin</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {availableBalances.map(balance => (
+                            <div 
+                              key={balance.id} 
+                              className={`relative border-2 rounded-lg p-3 transition-all duration-200 cursor-pointer hover:shadow-md ${
+                                selectedBalances.some(b => b.id === balance.id)
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-gray-200 bg-white hover:border-gray-300'
+                              } ${selectedBalances.length >= 3 && !selectedBalances.some(b => b.id === balance.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              onClick={() => {
+                                if (selectedBalances.length >= 3 && !selectedBalances.some(b => b.id === balance.id)) return;
+                                const isSelected = selectedBalances.some(b => b.id === balance.id);
+                                handleBalanceSelection(balance, !isSelected);
+                              }}
+                            >
+                              <div className="flex items-center space-x-3">
+                                <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                                  selectedBalances.some(b => b.id === balance.id)
+                                    ? 'border-blue-500 bg-blue-500'
+                                    : 'border-gray-300'
+                                }`}>
+                                  {selectedBalances.some(b => b.id === balance.id) && (
+                                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-semibold text-gray-900">
+                                    {balance.year} - {balance.period}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {balance.creation_date}
+                                  </div>
+                                  <div className="text-xs text-blue-600 font-medium mt-1">
+                                    Yıllar: {balance.years.join(', ')}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
 
-                {/* Seçim Özeti */}
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6">
+                {/* Compact Seçim Özeti */}
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200 h-fit">
                   <h3 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     Seçim Özeti
                   </h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Seçilen Şirket:</span>
-                      <span className="text-sm font-medium text-gray-900">{selectedCompany || 'Henüz seçilmedi'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Mevcut Bilanço:</span>
-                      <span className="text-sm font-medium text-gray-900">{availableBalances.length} adet</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Seçilen Bilanço:</span>
-                      <span className="text-sm font-medium text-gray-900">{selectedBalances.length}/3</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Analiz Durumu:</span>
-                      <span className={`text-sm font-medium ${selectedBalances.length >= 2 ? 'text-green-600' : 'text-orange-600'}`}>
-                        {selectedBalances.length >= 2 ? '✅ Hazır' : 'En az 2 bilanço gerekli'}
+                  <div className="space-y-2 text-xs">
+                    <div className="flex justify-between items-center py-1">
+                      <span className="text-gray-600">Seçilen Şirket:</span>
+                      <span className="font-medium text-gray-900 text-right max-w-[120px] truncate" title={selectedCompany || 'Henüz seçilmedi'}>
+                        {selectedCompany || 'Henüz seçilmedi'}
                       </span>
+                    </div>
+                    <div className="flex justify-between items-center py-1">
+                      <span className="text-gray-600">Mevcut Bilanço:</span>
+                      <span className="font-medium text-gray-900">{availableBalances.length} adet</span>
+                    </div>
+                    <div className="flex justify-between items-center py-1">
+                      <span className="text-gray-600">Seçilen Bilanço:</span>
+                      <span className="font-medium text-gray-900">{selectedBalances.length}/3</span>
+                    </div>
+                    <div className="border-t border-gray-300 pt-2 mt-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Analiz Durumu:</span>
+                        <span className={`font-medium text-xs px-2 py-1 rounded-full ${
+                          selectedBalances.length >= 2 
+                            ? 'bg-green-100 text-green-700' 
+                            : 'bg-orange-100 text-orange-700'
+                        }`}>
+                          {selectedBalances.length >= 2 ? '✅ Hazır' : 'En az 2 bilanço gerekli'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Bilanço Seçimi */}
-              {selectedCompany && (
-                <div className="mt-8">
-                  <label className="block text-sm font-semibold text-gray-800 mb-4">
-                    Karşılaştırılacak Bilançolar (2-3 adet seçin)
-                  </label>
-                  
-                  {availableBalances.length === 0 && !loading ? (
-                    <div className="text-center py-8">
-                      <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">Bu şirket için bilanço bulunamadı</h3>
-                      <p className="text-gray-500">Lütfen farklı bir şirket seçin veya önce bilanço ekleyin.</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                      {availableBalances.map(balance => (
-                        <div 
-                          key={balance.id} 
-                          className={`relative border-2 rounded-xl p-5 transition-all duration-200 cursor-pointer ${
-                            selectedBalances.some(b => b.id === balance.id)
-                              ? 'border-blue-500 bg-blue-50 shadow-lg'
-                              : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md'
-                          } ${selectedBalances.length >= 3 && !selectedBalances.some(b => b.id === balance.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          onClick={() => {
-                            if (selectedBalances.length >= 3 && !selectedBalances.some(b => b.id === balance.id)) return;
-                            const isSelected = selectedBalances.some(b => b.id === balance.id);
-                            handleBalanceSelection(balance, !isSelected);
-                          }}
-                        >
-                          <div className="flex items-start space-x-4">
-                            <div className={`w-5 h-5 rounded-full border-2 mt-1 flex items-center justify-center ${
-                              selectedBalances.some(b => b.id === balance.id)
-                                ? 'border-blue-500 bg-blue-500'
-                                : 'border-gray-300'
-                            }`}>
-                              {selectedBalances.some(b => b.id === balance.id) && (
-                                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                </svg>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-semibold text-gray-900">
-                                {balance.year} - {balance.period}
-                              </div>
-                              <div className="text-sm text-gray-500 mt-1">
-                                {balance.creation_date}
-                              </div>
-                              <div className="text-xs text-blue-600 mt-2 font-medium">
-                                Yıllar: {balance.years.join(', ')}
-                              </div>
-                            </div>
-                          </div>
-                          {selectedBalances.some(b => b.id === balance.id) && (
-                            <div className="absolute top-2 right-2">
-                              <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                </svg>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Analiz Butonu */}
+              {/* Compact Analiz Butonu */}
               {selectedBalances.length >= 2 && (
-                <div className="mt-8 text-center">
-                  <button
+                <div className="mt-6 text-center">
+                  <button 
                     onClick={performAnalysis}
                     disabled={loading}
-                    className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
