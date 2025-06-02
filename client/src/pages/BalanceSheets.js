@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { BalanceSheetAPI, CompanyAPI } from '../api';
-import ModernAlert from '../components/ModernAlert';
 
 // Tarih formatı DDMMYYYY
 const formatDateDDMMYYYY = (dateString) => {
@@ -28,9 +27,6 @@ const BalanceSheets = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
-  
-  // Accordion state'i
-  const [expandedCompanies, setExpandedCompanies] = useState(new Set());
   
   // Filtreleme state'leri
   const [filterCompany, setFilterCompany] = useState('');
@@ -67,7 +63,6 @@ const BalanceSheets = () => {
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
   const [duplicateBalanceData, setDuplicateBalanceData] = useState(null);
   const [proceedWithUpdate, setProceedWithUpdate] = useState(false);
-  const [alertConfig, setAlertConfig] = useState({ isOpen: false });
   
   const location = useLocation();
   const navigate = useNavigate();
@@ -82,29 +77,7 @@ const BalanceSheets = () => {
       }, 5000);
       return () => clearTimeout(timer);
     }
-
-    // CompanyDetail sayfasından gelen state kontrolleri
-    if (location.state?.openUploadModal) {
-      setShowUploadModal(true);
-      
-      // Öntanımlı şirket ID'si varsa seç
-      if (location.state.preselectedCompanyId) {
-        setCompanyId(location.state.preselectedCompanyId.toString());
-        
-        // Şirket ismini de bul ve ata
-        const selectedCompany = companies.find(comp => 
-          comp.id.toString() === location.state.preselectedCompanyId.toString()
-        );
-        if (selectedCompany) {
-          setCompany(selectedCompany.name);
-          setTaxNumber(selectedCompany.tax_number || '');
-        }
-      }
-      
-      // State'i temizle (tek seferlik işlem)
-      window.history.replaceState({}, document.title);
-    }
-  }, [location, companies]);
+  }, [location]);
 
   // Şirketleri getiren fonksiyon
   const fetchCompanies = async () => {
@@ -130,31 +103,6 @@ const BalanceSheets = () => {
         { id: 3, name: "Örnek Anonim Şirketi", tax_number: "5555555555" }
       ]);
     }
-  };
-
-  // Şirket bilançolarını gruplayan fonksiyon
-  const groupBalanceSheetsByCompany = (balanceSheets) => {
-    const grouped = {};
-    balanceSheets.forEach(sheet => {
-      const companyName = sheet.company_name;
-      if (!grouped[companyName]) {
-        grouped[companyName] = [];
-      }
-      grouped[companyName].push(sheet);
-    });
-    return grouped;
-  };
-
-  // En güncel bilançoyu bulan fonksiyon (analiz raporu için)
-  const getLatestBalanceSheetForCompany = (companySheets) => {
-    return companySheets.sort((a, b) => {
-      // Önce yıla göre
-      if (a.year !== b.year) return b.year - a.year;
-      
-      // Aynı yılsa döneme göre (YILLIK > Q4 > Q3 > Q2 > Q1)
-      const periodOrder = { 'YILLIK': 5, 'Q4': 4, 'Q3': 3, 'Q2': 2, 'Q1': 1 };
-      return (periodOrder[b.period] || 0) - (periodOrder[a.period] || 0);
-    })[0];
   };
 
   // fetchBalanceSheets fonksiyonunu useEffect dışına taşıdık
@@ -746,7 +694,7 @@ const BalanceSheets = () => {
     setPreview(null);
     setAutoDetectedData(null);
     setAutoDetectedCompany(null);
-    setPdfUploadStep(1); // Adımı sıfırla
+    setPdfUploadStep(1);
     setPdfAnalysisLoading(false);
     
     // Duplicate kontrolü state'lerini de temizle
@@ -762,20 +710,8 @@ const BalanceSheets = () => {
 
   // Silme modalını aç
   const handleDeleteClick = (sheet) => {
-    setAlertConfig({
-      isOpen: true,
-      type: 'warning',
-      title: 'Bilanço Silinecek',
-      message: `${sheet.company_name} şirketinin ${sheet.year} ${sheet.period} dönemi bilançosunu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`,
-      confirmText: 'Sil',
-      cancelText: 'İptal',
-      showCancel: true,
-      onConfirm: () => {
-        setAlertConfig({ isOpen: false });
-        handleDeleteBalanceSheet(sheet);
-      },
-      onClose: () => setAlertConfig({ isOpen: false })
-    });
+    setBalanceSheetToDelete(sheet);
+    setShowDeleteModal(true);
   };
   
   // Silme modalını kapat
@@ -785,39 +721,27 @@ const BalanceSheets = () => {
   };
   
   // Bilançoyu sil
-  const handleDeleteBalanceSheet = async (sheet) => {
+  const handleDeleteBalanceSheet = async () => {
     try {
       setLoading(true);
+      // await BalanceSheetAPI.deleteBalanceSheet(balanceSheetToDelete.id);
       
-      console.log('🗑️ Bilanço siliniyor:', sheet.id);
-      await BalanceSheetAPI.deleteBalanceSheet(sheet.id);
+      // Geçici olarak mock silme - listeyi güncelle
+      setBalanceSheets(balanceSheets.filter(sheet => sheet.id !== balanceSheetToDelete.id));
+      setFilteredBalanceSheets(filteredBalanceSheets.filter(sheet => sheet.id !== balanceSheetToDelete.id));
       
-      // Listeyi güncelle
-      const updatedSheets = balanceSheets.filter(s => s.id !== sheet.id);
-      setBalanceSheets(updatedSheets);
-      setFilteredBalanceSheets(filteredBalanceSheets.filter(s => s.id !== sheet.id));
+      setSuccessMessage(`${balanceSheetToDelete.company} - ${balanceSheetToDelete.year} ${balanceSheetToDelete.period} bilançosu başarıyla silindi.`);
+        setTimeout(() => {
+          setSuccessMessage('');
+        }, 5000);
       
-      setAlertConfig({
-        isOpen: true,
-        type: 'success',
-        title: 'Bilanço Silindi',
-        message: `${sheet.company_name} - ${sheet.year} ${sheet.period} bilançosu başarıyla silindi.`,
-        onClose: () => setAlertConfig({ isOpen: false })
-      });
-      
-      console.log('✅ Bilanço başarıyla silindi');
-      
-    } catch (error) {
-      console.error("❌ Bilanço silme sırasında hata:", error);
-      setAlertConfig({
-        isOpen: true,
-        type: 'error',
-        title: 'Silme Hatası',
-        message: 'Bilanço silinirken bir hata oluştu. Lütfen tekrar deneyin.',
-        onClose: () => setAlertConfig({ isOpen: false })
-      });
+    } catch (err) {
+      console.error("Bilanço silme sırasında hata:", err);
+      setError('Bilanço silinirken bir hata oluştu. Lütfen tekrar deneyin.');
     } finally {
       setLoading(false);
+      setShowDeleteModal(false);
+      setBalanceSheetToDelete(null);
     }
   };
 
@@ -851,15 +775,60 @@ const BalanceSheets = () => {
     applyFilters();
   }, [balanceSheets, filterCompany, filterYear, filterPeriod]);
 
-  // Şirket açma/kapama fonksiyonu
-  const toggleCompany = (companyName) => {
-    const newExpanded = new Set(expandedCompanies);
-    if (newExpanded.has(companyName)) {
-      newExpanded.delete(companyName);
-    } else {
-      newExpanded.add(companyName);
+  // JSON verisi ile PDF analiz
+  const analyzeWithJsonData = async () => {
+    try {
+      console.log('📄 JSON verisi ile demo analiz başlatılıyor...');
+      
+      // Demo JSON verisi
+      const jsonData = {
+        company_info: {
+          name: "Test Demo Şirketi",
+          tax_number: "1111111111",
+          email: "demo@test.com",
+          industry: "Test"
+        },
+        analysis_metadata: {
+          filename: "demo_test.pdf",
+          year: 2024,
+          period: "YILLIK"
+        },
+        target_year: 2024,
+        target_period: "YILLIK"
+      };
+
+      const response = await BalanceSheetAPI.getDemoAnalysisWithJson();
+      
+      if (response.success) {
+        console.log('✅ Demo analiz başarılı:', response);
+        
+        // BalanceSheetPreview sayfasına yönlendir
+        navigate('/balance-sheets/preview', {
+          state: {
+            analysisData: {
+              success: true,
+              detected_data: response.preview_data.detected_data,
+              company_info: response.preview_data.company_info,
+              analysis_metadata: response.preview_data.analysis_metadata
+            },
+            formData: {
+              company_id: 1,
+              year: 2024,
+              period: "YILLIK",
+              notes: "JSON Demo Analizi",
+              filename: "demo_test.pdf"
+            },
+            isJsonDemo: true
+          }
+        });
+      } else {
+        setUploadError('Demo analiz başarısız: ' + response.error);
+      }
+      
+    } catch (error) {
+      console.error('❌ JSON demo analiz hatası:', error);
+      setUploadError('JSON demo analiz hatası: ' + error.message);
     }
-    setExpandedCompanies(newExpanded);
   };
 
   if (loading && !balanceSheets.length) {
@@ -888,28 +857,19 @@ const BalanceSheets = () => {
         </div>
       )}
       
-      {/* Modern Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-6 mb-8 text-white">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <div className="bg-white bg-opacity-20 p-4 rounded-xl mr-4">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-white">Bilanço Yönetimi</h1>
-              <p className="text-blue-100 mt-1">Şirket bilançolarını yönetin ve analiz edin</p>
-            </div>
-          </div>
-          
-          {/* Hızlı İşlemler Butonu Header'da */}
+      <div className="flex justify-between items-center mb-6">
+        <div>
+        <h1 className="text-2xl font-semibold text-gray-800">Bilançolar</h1>
+          <p className="text-sm text-gray-600 mt-1">Şirket bilançolarını yönetin ve analiz edin</p>
+        </div>
+        <div className="flex space-x-3">
+          {/* Hızlı İşlemler Butonu */}
           <div className="relative">
-            <button 
+          <button 
               onClick={() => setShowQuickActions(!showQuickActions)}
-              className="inline-flex items-center px-6 py-3 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-xl text-sm font-medium text-white hover:bg-opacity-30 transition-all duration-200"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150"
             >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
               Hızlı İşlemler
@@ -931,9 +891,9 @@ const BalanceSheets = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                       </svg>
                     </div>
-                    PDF'den Yükle
-                  </button>
-                  <Link 
+            PDF'den Yükle
+          </button>
+          <Link 
                     to="/multi-balance-analysis"
                     className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                     onClick={() => setShowQuickActions(false)}
@@ -944,48 +904,23 @@ const BalanceSheets = () => {
                       </svg>
                     </div>
                     Çoklu Bilanço Analizi
-                  </Link>
-                  <div className="border-t border-gray-100 my-1"></div>
-                  <Link
-                    to={filteredBalanceSheets.length > 0 ? `/balance-sheets/${getLatestBalanceSheetForCompany(filteredBalanceSheets)?.id}/analysis` : '#'}
-                    className={`flex items-center w-full px-4 py-2 text-sm transition-colors ${filteredBalanceSheets.length > 0 ? 'text-gray-700 hover:bg-gray-100' : 'text-gray-400 cursor-not-allowed'}`}
-                    onClick={() => {
-                      if (filteredBalanceSheets.length > 0) {
-                        setShowQuickActions(false);
-                      }
-                    }}
-                  >
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center mr-3 text-white ${filteredBalanceSheets.length > 0 ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-400'}`}>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                      </svg>
-                    </div>
-                    Analiz Raporu
-                  </Link>
+          </Link>
                   <div className="border-t border-gray-100 my-1"></div>
                   <button
                     onClick={() => setShowQuickActions(false)}
                     className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                   >
-                    <div className="w-8 h-8 bg-gray-600 hover:bg-gray-700 rounded-lg flex items-center justify-center mr-3 text-white">
+                    <div className="w-8 h-8 bg-amber-600 hover:bg-amber-700 rounded-lg flex items-center justify-center mr-3 text-white">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                       </svg>
                     </div>
-                    Ayarlar
+                    Analiz Raporu (Yakında)
                   </button>
                 </div>
               </div>
             )}
           </div>
-        </div>
-      </div>
-      
-      <div className="flex justify-between items-center mb-6">
-        <div>
-        </div>
-        <div className="flex space-x-3">
-          {/* Eski Hızlı İşlemler butonu kaldırıldı */}
         </div>
       </div>
 
@@ -994,7 +929,7 @@ const BalanceSheets = () => {
         <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
           <svg className="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.414A1 1 0 013 6.707V4z" />
-          </svg>
+            </svg>
           Filtrele
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1065,466 +1000,826 @@ const BalanceSheets = () => {
         </div>
       </div>
 
-      {/* Accordion Şirket Listesi */}
-      <div className="space-y-4">
-        {filteredBalanceSheets.length === 0 ? (
-          <div className="bg-white shadow-md rounded-lg p-12 text-center">
-            <svg className="w-16 h-16 text-gray-300 mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {balanceSheets.length === 0 ? 'Henüz bilanço yok' : 'Filtreye uygun bilanço bulunamadı'}
-            </h3>
-            <p className="text-gray-500 text-center mb-4">
-              {balanceSheets.length === 0 
-                ? 'İlk bilançonuzu eklemek için yukarıdaki Hızlı İşlemler butonunu kullanın.'
-                : 'Farklı filtre seçenekleri deneyebilir veya filtreleri temizleyebilirsiniz.'
-              }
-            </p>
-            {balanceSheets.length === 0 && (
-              <div className="flex justify-center space-x-3">
-                <button 
-                  onClick={() => setShowUploadModal(true)} 
-                  className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded"
-                >
-                  PDF'den Yükle
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
-          Object.entries(groupBalanceSheetsByCompany(filteredBalanceSheets)).map(([companyName, companySheets]) => {
-            const latestSheet = getLatestBalanceSheetForCompany(companySheets);
-            const isExpanded = expandedCompanies.has(companyName);
-            
-            return (
-              <div key={companyName} className="bg-white shadow-md rounded-lg overflow-hidden border border-gray-200">
-                {/* Şirket Başlığı - Tıklanabilir */}
-                <div 
-                  className="px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 cursor-pointer hover:from-blue-100 hover:to-indigo-100 transition-colors"
-                  onClick={() => toggleCompany(companyName)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10">
-                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                          <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                          </svg>
-                        </div>
+      <div className="bg-white shadow-md rounded-lg overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Şirket</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Yıl</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dönem</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Oluşturma Tarihi</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">İşlemler</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {filteredBalanceSheets.length === 0 ? (
+              <tr>
+                <td colSpan="5" className="px-6 py-12 text-center">
+                  <div className="flex flex-col items-center">
+                    <svg className="w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      {balanceSheets.length === 0 ? 'Henüz bilanço yok' : 'Filtreye uygun bilanço bulunamadı'}
+                    </h3>
+                    <p className="text-gray-500 text-center mb-4">
+                      {balanceSheets.length === 0 
+                        ? 'İlk bilançonuzu eklemek için yukarıdaki butonları kullanın.'
+                        : 'Farklı filtre seçenekleri deneyebilir veya filtreleri temizleyebilirsiniz.'
+                      }
+                    </p>
+                    {balanceSheets.length === 0 && (
+                      <div className="flex space-x-3">
+                        <button 
+                          onClick={() => setShowUploadModal(true)} 
+                          className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded"
+                        >
+                          PDF'den Yükle
+                        </button>
                       </div>
-                      <div className="ml-4">
-                        <div className="text-lg font-bold text-gray-900">{companyName}</div>
-                        <div className="text-sm text-gray-600">
-                          {companySheets.length} bilanço • 
-                          En güncel: {latestSheet.year}-{latestSheet.period}
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              filteredBalanceSheets.map((sheet) => (
+              <tr key={sheet.id}>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-medium text-gray-900">{sheet.company_name}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-500">{sheet.year || '-'}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-500">{sheet.period || '-'}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-500">{formatDateDDMMYYYY(sheet.creation_date) || '-'}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <div className="flex items-center space-x-3">
+                    <Link 
+                      to={`/balance-sheets/${sheet.id}`} 
+                      className="text-blue-600 hover:text-blue-900 transition-colors"
+                      title="Detay"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                    </Link>
+                    <Link 
+                      to={`/balance-sheets/${sheet.id}/with-plan`} 
+                      className="text-green-600 hover:text-green-900 transition-colors"
+                      title="Hesap Planı"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                    </Link>
+                    <Link 
+                      to={`/balance-sheets/${sheet.id}/edit`} 
+                      className="text-amber-600 hover:text-amber-900 transition-colors"
+                      title="Düzenle"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </Link>
+                    <button 
+                      className="text-red-600 hover:text-red-900 transition-colors"
+                      title="Sil"
+                      onClick={() => handleDeleteClick(sheet)}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* API Bilgi Notu */}
+      <div className="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 mt-6" role="alert">
+        <div className="flex items-start">
+          <div className="flex-shrink-0">
+            <svg className="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <div className="ml-3">
+            <p className="font-bold">API Bağlantısı Durumu</p>
+            <p>Bilanço işlemleri için API bağlantısı şu anda kullanılamıyor olabilir. Bu durumda sistem otomatik olarak demo veriler gösterecektir.</p>
+            <p className="mt-2 text-sm">
+              <span className="font-semibold">Hata:</span> PDF analizi ve yükleme işlemleri demo modda çalışacak. Gerçek sunucu bağlantısı gerektiğinde lütfen arka uç (backend) sisteminin çalıştığından emin olun.
+            </p>
+            <p className="mt-2 text-sm">
+              <code className="bg-blue-100 px-2 py-1 rounded">ERR_CONNECTION_REFUSED</code> hatası görürseniz, sunucu bağlantısında sorun var demektir.
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      {/* PDF Yükleme Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={closeUploadModal}></div>
+          
+          <div className="relative bg-white rounded-lg max-w-6xl w-full mx-4 md:mx-auto overflow-hidden shadow-xl transform transition-all">
+            <div className="absolute top-0 right-0 pt-4 pr-4">
+              <button
+                type="button"
+                className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
+                onClick={closeUploadModal}
+              >
+                <span className="sr-only">Kapat</span>
+                <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <h3 className="text-2xl font-semibold text-gray-800 mb-5" id="modal-title">
+                Bilanço PDF Yükle
+              </h3>
+              
+              {/* Demo mod bilgilendirme mesajı */}
+              <div className="bg-blue-50 border-l-4 border-blue-400 text-blue-700 p-4 mb-6" role="alert">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-blue-700 font-medium">
+                      Sunucu bağlantısı bulunamadığında sistem otomatik olarak demo modda çalışır.
+                    </p>
+                    <p className="text-sm text-blue-700 mt-1">
+                      Bu modda PDF içeriği gerçekten analiz edilmez, ancak arayüz test edilebilir.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              {uploadError && (
+                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
+                  <p className="font-bold">Hata</p>
+                  <p>{uploadError}</p>
+                </div>
+              )}
+              
+              {/* Adım göstergesi */}
+              <div className="mb-8">
+                <div className="flex items-center">
+                  <div className={`flex items-center justify-center w-10 h-10 rounded-full ${pdfUploadStep >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'}`}>
+                    1
+                  </div>
+                  <div className={`flex-1 h-1 mx-2 ${pdfUploadStep >= 2 ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
+                  <div className={`flex items-center justify-center w-10 h-10 rounded-full ${pdfUploadStep >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'}`}>
+                    2
+                  </div>
+                </div>
+                <div className="flex justify-between mt-2">
+                  <div className="text-sm font-medium text-gray-700">PDF Seçimi</div>
+                  <div className="text-sm font-medium text-gray-700">Bilanço Bilgileri</div>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Sol panel - Her zaman görünür */}
+                <div>
+                  {pdfUploadStep === 1 ? (
+                    /* Adım 1: PDF Seçimi */
+                    <div>
+                      <p className="text-gray-600 mb-6">
+                        Lütfen bilanço dosyanızı seçin. Sistem, PDF içeriğindeki verileri otomatik olarak tarayacak ve mümkün olan bilgileri dolduracaktır.
+                      </p>
+                      
+                      <div className="mb-6">
+                        <label className="block text-gray-700 text-sm font-bold mb-2">
+                          PDF Dosyası
+                        </label>
+                        <div className="flex items-center justify-center w-full">
+                          <label className="flex flex-col w-full h-56 border-2 border-blue-200 border-dashed hover:bg-gray-100 hover:border-blue-300 rounded-lg group cursor-pointer">
+                            <div className="flex flex-col items-center justify-center pt-7 h-full">
+                              {pdfAnalysisLoading ? (
+                                <div className="text-center">
+                                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600 mb-4"></div>
+                                  <p className="text-sm text-blue-600 font-medium">PDF analiz ediliyor...</p>
+                                  <p className="text-xs text-gray-500 mt-2">PDF dosyasındaki veriler çıkarılıyor ve bilgiler tespit ediliyor</p>
+                                </div>
+                              ) : (
+                                <>
+                                  <svg className="w-14 h-14 text-blue-400 group-hover:text-blue-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                  </svg>
+                                  <p className="text-sm text-gray-700 group-hover:text-gray-800 font-medium">
+                                    PDF dosyasını seçmek için tıklayın
+                                  </p>
+                                  <p className="text-xs text-gray-500 mt-2">veya dosyayı sürükleyip bırakın</p>
+                                  <p className="text-xs text-gray-400 mt-1">Maksimum dosya boyutu: 10MB</p>
+                                  {file && (
+                                    <p className="mt-4 text-sm font-medium text-green-600">
+                                      {file.name} ({Math.round(file.size / 1024)} KB)
+                                    </p>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                            <input 
+                              type="file" 
+                              className="hidden" 
+                              accept="application/pdf"
+                              onChange={handleFileChange}
+                              disabled={pdfAnalysisLoading}
+                            />
+                          </label>
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-4">
-                      {/* Analiz Raporu Butonu */}
-                      <Link 
-                        to={`/balance-sheets/${latestSheet.id}/analysis`} 
-                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-purple-600 hover:bg-purple-700 transition-colors"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
-                        Analiz Raporu
-                      </Link>
-                      
-                      {/* Açma/Kapama İkonu */}
-                      <div className="text-blue-600">
-                        <svg 
-                          className={`w-6 h-6 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} 
-                          fill="none" 
-                          stroke="currentColor" 
-                          viewBox="0 0 24 24"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
+                  ) : (
+                    /* PDF Yükleme Modal - Adım 2: Bilanço Bilgilerini Düzenleme */
+                    <form onSubmit={handlePdfUpload} className="mt-4">
+                      {/* Dosya Bilgileri */}
+                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-md mb-4">
+                        <h4 className="font-medium text-blue-800 mb-1">PDF Analiz Sonuçları</h4>
+                        <p className="text-sm text-blue-600">
+                          "{file?.name}" dosyasından aşağıdaki bilgiler tespit edildi.
+                        </p>
+                        
+                        {autoDetectedData && autoDetectedData.detection_confidence && (
+                          <div className="mt-1 text-xs text-blue-500">
+                            <span className="font-medium">Tespit güvenilirliği:</span> %{Math.round(autoDetectedData.detection_confidence * 100)}
+                          </div>
+                        )}
                       </div>
+                      
+                      {/* Otomatik Tespit Edilen Şirket */}
+                      {autoDetectedCompany && (
+                        <div className="p-3 mb-4 bg-green-50 border border-green-200 rounded-md">
+                          <h4 className="font-medium text-green-800 mb-1">Tespit Edilen Şirket</h4>
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div className="text-green-700"><span className="font-medium">Şirket Adı:</span> {autoDetectedCompany.name}</div>
+                            <div className="text-green-700"><span className="font-medium">VKN:</span> {autoDetectedCompany.tax_number}</div>
+                          </div>
+                          
+                          <div className="mt-2">
+                            <button
+                              type="button" 
+                              className="text-xs text-blue-600 hover:text-blue-800"
+                              onClick={() => {
+                                setCompanyId('');
+                                setCompany('');
+                                setTaxNumber('');
+                                setAutoDetectedCompany(null);
+                              }}
+                            >
+                              Şirketi manuel seçmek istiyorum
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Şirket Seçimi */}
+                      {!autoDetectedCompany && (
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="company">
+                            Şirket Seçin
+                          </label>
+                          <select
+                            id="company"
+                            name="company"
+                            className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            value={companyId}
+                            onChange={(e) => {
+                              setCompanyId(e.target.value);
+                              
+                              // Seçilen şirket adını ayarla
+                              const selected = companies.find(c => c.id.toString() === e.target.value);
+                              if (selected) {
+                                setCompany(selected.name);
+                                setTaxNumber(selected.tax_number || '');
+                              }
+                            }}
+                            required
+                          >
+                            <option value="">-- Şirket Seçin --</option>
+                            {companies.map((company) => (
+                              <option key={company.id} value={company.id}>
+                                {company.name}
+                              </option>
+                            ))}
+                          </select>
+                          
+                          {/* VKN ile aramayı ayrı bir bileşene almayı düşünebilirsiniz */}
+                          <div className="mt-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="tax_number">
+                              Vergi Kimlik Numarası ile Ara
+                            </label>
+                            <div className="flex items-center mt-1">
+                              <input
+                                type="text"
+                                id="tax_number"
+                                name="tax_number"
+                                placeholder="VKN giriniz (10 haneli)"
+                                value={taxNumber}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  setTaxNumber(value);
+                                  
+                                  // VKN formatını kontrol et
+                                  if (value && !/^\d{10}$/.test(value)) {
+                                    setTaxNumberError('VKN 10 haneli sayısal bir değer olmalıdır.');
+                                  } else {
+                                    setTaxNumberError('');
+                                  }
+                                }}
+                                className="flex-1 p-2 border border-gray-300 rounded-l-md focus:ring-blue-500 focus:border-blue-500"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => findCompanyByTaxNumber(taxNumber)}
+                                disabled={!taxNumber || taxNumberError}
+                                className="p-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 disabled:bg-blue-300"
+                              >
+                                Ara
+                              </button>
+                            </div>
+                            {taxNumberError && (
+                              <p className="mt-1 text-sm text-red-600">
+                                {taxNumberError}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Otomatik Tespit Edilen Dönem ve Yıl Bilgileri */}
+                      {autoDetectedData && (autoDetectedData.period || autoDetectedData.year) && (
+                        <div className="p-3 mb-4 bg-purple-50 border border-purple-200 rounded-md">
+                          <h4 className="font-medium text-purple-800 mb-1">Tespit Edilen Dönem Bilgileri</h4>
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            {autoDetectedData.period && (
+                              <div className="text-purple-700"><span className="font-medium">Dönem:</span> {autoDetectedData.period}</div>
+                            )}
+                            {autoDetectedData.year && (
+                              <div className="text-purple-700"><span className="font-medium">Yıl:</span> {autoDetectedData.year}</div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Dönem Bilgileri */}
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="year">
+                            Yıl
+                          </label>
+                          <input
+                            type="number"
+                            id="year"
+                            name="year"
+                            min="2000"
+                            max="2100"
+                            value={year}
+                            onChange={(e) => setYear(parseInt(e.target.value) || new Date().getFullYear())}
+                            className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="period">
+                            Dönem
+                          </label>
+                          <select
+                            id="period"
+                            name="period"
+                            value={period}
+                            onChange={(e) => setPeriod(e.target.value)}
+                            className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            required
+                          >
+                            <option value="YILLIK">Yıllık</option>
+                            <option value="Q1">1. Çeyrek</option>
+                            <option value="Q2">2. Çeyrek</option>
+                            <option value="Q3">3. Çeyrek</option>
+                            <option value="Q4">4. Çeyrek</option>
+                            <option value="AYLIK-01">Ocak</option>
+                            <option value="AYLIK-02">Şubat</option>
+                            <option value="AYLIK-03">Mart</option>
+                            <option value="AYLIK-04">Nisan</option>
+                            <option value="AYLIK-05">Mayıs</option>
+                            <option value="AYLIK-06">Haziran</option>
+                            <option value="AYLIK-07">Temmuz</option>
+                            <option value="AYLIK-08">Ağustos</option>
+                            <option value="AYLIK-09">Eylül</option>
+                            <option value="AYLIK-10">Ekim</option>
+                            <option value="AYLIK-11">Kasım</option>
+                            <option value="AYLIK-12">Aralık</option>
+                          </select>
+                        </div>
+                      </div>
+                      
+                      {/* Notlar */}
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="notes">
+                          Notlar (İsteğe Bağlı)
+                        </label>
+                        <textarea
+                          id="notes"
+                          name="notes"
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          rows="2"
+                          className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Bilanço ile ilgili notlar..."
+                        ></textarea>
+                      </div>
+                      
+                      {/* İşlem Butonları */}
+                      <div className="flex justify-between space-x-3">
+                        <button
+                          type="button"
+                          onClick={() => setPdfUploadStep(1)}
+                          className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                        >
+                          <svg className="mr-2 -ml-1 h-4 w-4" fill="none" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"></path>
+                          </svg>
+                          Geri
+                        </button>
+                        
+                        <button
+                          type="submit"
+                          className="inline-flex items-center px-6 py-3 border border-transparent text-md font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                          disabled={!companyId || uploadLoading}
+                        >
+                          {uploadLoading ? (
+                            <>
+                              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              İşleniyor...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="mr-2 -ml-1 h-5 w-5" fill="none" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"></path>
+                              </svg>
+                              Bilançoyu Kaydet
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+                
+                {/* Sağ panel - PDF Önizleme */}
+                <div>
+                  {preview ? (
+                    <div className="w-full h-full flex flex-col">
+                      <h2 className="text-xl font-semibold mb-4 text-gray-700">PDF Önizleme</h2>
+                      <div className="flex-grow">
+                        <iframe
+                          src={preview}
+                          title="PDF Preview"
+                          className="w-full h-[400px] border border-gray-300 rounded"
+                        ></iframe>
+                      </div>
+                      <div className="mt-4 text-center">
+                        <p className="text-sm text-gray-600">
+                          Bilanço, hesap planına göre otomatik olarak işlenecektir.
+                        </p>
+                        <p className="text-sm text-gray-600 mt-1">
+                          PDF'den cari dönem ve geçmiş dönem verileri otomatik çıkarılacaktır.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center flex-col p-8">
+                      <svg className="w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                      </svg>
+                      <p className="text-gray-500 text-center">
+                        Önizleme burada görüntülenecek.<br />
+                        Lütfen önce PDF dosyası seçin.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Bilgi kutusu */}
+              <div className="mt-6 bg-gray-50 p-4 rounded-md">
+                <h4 className="font-medium text-gray-700 mb-2">Önemli Bilgiler</h4>
+                <p className="text-sm text-gray-600 mb-2">
+                  Yükleyeceğiniz PDF bilanço dosyası şu kriterlere uygun olmalıdır:
+                </p>
+                <ul className="list-disc pl-5 text-sm text-gray-600">
+                  <li>PDF dosyası düzgün formatlı ve okunabilir olmalıdır</li>
+                  <li>Bilanço verileri tek düzen hesap planına uygun olmalıdır</li>
+                  <li>Hesap kodları ve tutarlar açıkça belirtilmiş olmalıdır</li>
+                  <li>Cari dönem ve geçmiş dönem verileri ayrı sütunlarda yer almalıdır</li>
+                  <li>Şirket bilgileri ve VKN dosya içeriğinde yer alırsa otomatik tespit edilecektir</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unvan Uyumsuzluğu Modalı */}
+      {showTitleMismatchModal && titleMismatchData && (
+        <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center" aria-labelledby="title-mismatch-modal-title" role="dialog" aria-modal="true">
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setShowTitleMismatchModal(false)}></div>
+          
+          <div className="relative bg-white rounded-lg max-w-2xl w-full mx-4 md:mx-auto overflow-hidden shadow-xl transform transition-all">
+            <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4">
+              <h3 className="text-xl font-bold text-white flex items-center" id="title-mismatch-modal-title">
+                <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                Şirket Unvanı Uyumsuzluğu
+              </h3>
+              <p className="text-amber-100 mt-1">PDF'den tespit edilen unvan ile sistemdeki unvan farklı</p>
+            </div>
+            
+            <div className="p-6">
+              <div className="mb-6">
+                <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-amber-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-amber-700">
+                        PDF'den tespit edilen şirket unvanı ile sistemde kayıtlı unvan farklılık gösteriyor. 
+                        Lütfen doğru unvanı seçin veya sistemdeki unvanı güncelleyin.
+                      </p>
                     </div>
                   </div>
                 </div>
                 
-                {/* Açılır Bilanço Listesi */}
-                {isExpanded && (
-                  <div className="border-t border-gray-200">
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dönem</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Oluşturulma</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notlar</th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">İşlemler</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {companySheets.map((sheet) => (
-                            <tr key={sheet.id} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm font-medium text-gray-900">{sheet.year} - {sheet.period}</div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm text-gray-500">{formatDateDDMMYYYY(sheet.creation_date)}</div>
-                              </td>
-                              <td className="px-6 py-4">
-                                <div className="text-sm text-gray-500 max-w-xs truncate">{sheet.notes || 'Not yok'}</div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center">
-                                <div className="flex items-center justify-center space-x-3">
-                                  <Link 
-                                    to={`/balance-sheets/${sheet.id}`} 
-                                    className="text-blue-600 hover:text-blue-900 transition-colors"
-                                    title="Detay"
-                                  >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                    </svg>
-                                  </Link>
-                                  <Link 
-                                    to={`/balance-sheets/${sheet.id}/edit`} 
-                                    className="text-amber-600 hover:text-amber-900 transition-colors"
-                                    title="Düzenle"
-                                  >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                    </svg>
-                                  </Link>
-                                  <button 
-                                    className="text-red-600 hover:text-red-900 transition-colors"
-                                    title="Sil"
-                                    onClick={() => handleDeleteClick(sheet)}
-                                  >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                <div className="space-y-4">
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <h4 className="font-medium text-red-800 mb-2">Sistemdeki Mevcut Unvan:</h4>
+                    <p className="text-red-700 bg-white p-2 rounded border font-mono">
+                      {titleMismatchData.currentTitle}
+                    </p>
                   </div>
-                )}
-              </div>
-            );
-          })
-        )}
-      </div>
-      
-      {/* Modern Alert */}
-      <ModernAlert {...alertConfig} />
-
-      {/* PDF Yükleme Modal'ı - Gelişmiş Versiyon */}
-      {showUploadModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-900">
-                {pdfUploadStep === 1 ? 'PDF Bilanço Yükle' : 'Bilanço Bilgilerini Düzenle'}
-              </h2>
-              <button
-                onClick={closeUploadModal}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Adım Göstergesi */}
-            <div className="mb-6">
-              <div className="flex items-center">
-                <div className={`flex items-center justify-center w-8 h-8 rounded-full ${pdfUploadStep >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'}`}>
-                  <span className="text-sm font-medium">1</span>
+                  
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <h4 className="font-medium text-green-800 mb-2">PDF'den Tespit Edilen Unvan:</h4>
+                    <p className="text-green-700 bg-white p-2 rounded border font-mono">
+                      {titleMismatchData.pdfTitle}
+                    </p>
+                  </div>
                 </div>
-                <div className={`flex-1 h-1 ${pdfUploadStep >= 2 ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
-                <div className={`flex items-center justify-center w-8 h-8 rounded-full ${pdfUploadStep >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'}`}>
-                  <span className="text-sm font-medium">2</span>
+                
+                <div className="mt-6 bg-blue-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-blue-800 mb-2">Seçenekleriniz:</h4>
+                  <ul className="list-disc pl-5 text-sm text-blue-700 space-y-1">
+                    <li>PDF'den tespit edilen unvan ile sistemdeki şirket unvanını güncelleyin</li>
+                    <li>Mevcut unvan ile devam edin (önerilmez)</li>
+                    <li>İşlemi iptal edin ve doğru şirketi seçin</li>
+                  </ul>
                 </div>
               </div>
-              <div className="flex justify-between mt-2">
-                <span className="text-sm text-gray-600">PDF Seçimi</span>
-                <span className="text-sm text-gray-600">Bilgileri Düzenle</span>
+              
+              <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
+                <button
+                  type="button"
+                  className="w-full sm:w-auto bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors"
+                  onClick={() => setShowTitleMismatchModal(false)}
+                >
+                  İptal
+                </button>
+                <button
+                  type="button"
+                  className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors"
+                  onClick={proceedWithUpload}
+                >
+                  Mevcut Unvan ile Devam Et
+                </button>
+                <button
+                  type="button"
+                  className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors"
+                  onClick={() => updateCompanyTitle(titleMismatchData.pdfTitle)}
+                >
+                  Unvanı Güncelle ve Devam Et
+                </button>
               </div>
             </div>
-            
-            <form onSubmit={handlePdfUpload} className="space-y-6">
-              {pdfUploadStep === 1 ? (
-                /* ADIM 1: PDF Seçimi ve Analiz */
-                <>
-                  {/* PDF Dosya Seçimi */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      PDF Bilanço Dosyası
-                    </label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
-                      <input
-                        type="file"
-                        accept=".pdf"
-                        onChange={handleFileChange}
-                        className="hidden"
-                        id="pdf-upload"
-                        required
-                      />
-                      <label htmlFor="pdf-upload" className="cursor-pointer">
-                        <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                          <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                        <div className="mt-2">
-                          <p className="text-sm text-gray-600">
-                            {file ? (
-                              <span className="text-blue-600 font-medium">{file.name}</span>
-                            ) : (
-                              <>
-                                <span className="font-medium text-blue-600">PDF dosyası seçin</span>
-                                <span className="text-gray-500"> veya buraya sürükleyin</span>
-                              </>
-                            )}
-                          </p>
-                          <p className="text-xs text-gray-500">PNG, JPG, PDF 10MB'a kadar</p>
-                        </div>
-                      </label>
-                    </div>
-                    {uploadError && (
-                      <p className="text-red-600 text-sm mt-2">{uploadError}</p>
-                    )}
-                  </div>
-
-                  {/* PDF Önizleme */}
-                  {preview && (
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">PDF Önizleme</h4>
-                      <div className="bg-white border rounded-lg p-2 max-h-64 overflow-hidden">
-                        <iframe
-                          src={preview}
-                          className="w-full h-60"
-                          title="PDF Önizleme"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* PDF Analiz Durumu */}
-                  {pdfAnalysisLoading && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <div className="flex items-center">
-                        <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-blue-600 mr-3"></div>
-                        <div>
-                          <h4 className="text-sm font-medium text-blue-800">PDF Analiz Ediliyor</h4>
-                          <p className="text-sm text-blue-600">Şirket bilgileri ve bilanço kalemleri otomatik tespit ediliyor...</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Otomatik Tespit Sonuçları */}
-                  {autoDetectedData && (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                      <h4 className="text-sm font-medium text-green-800 mb-2">
-                        <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Otomatik Tespit Edildi
-                      </h4>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="font-medium text-green-700">Şirket:</span>
-                          <span className="text-green-600 ml-2">{autoDetectedData.company_name || 'Bulunamadı'}</span>
-                        </div>
-                        <div>
-                          <span className="font-medium text-green-700">VKN:</span>
-                          <span className="text-green-600 ml-2">{autoDetectedData.tax_number || 'Bulunamadı'}</span>
-                        </div>
-                        <div>
-                          <span className="font-medium text-green-700">Yıl:</span>
-                          <span className="text-green-600 ml-2">{autoDetectedData.year || 'Bulunamadı'}</span>
-                        </div>
-                        <div>
-                          <span className="font-medium text-green-700">Dönem:</span>
-                          <span className="text-green-600 ml-2">{autoDetectedData.period || 'Bulunamadı'}</span>
-                        </div>
-                      </div>
-                      {autoDetectedData.items && (
-                        <div className="mt-2">
-                          <span className="font-medium text-green-700">Hesap Kalemleri:</span>
-                          <span className="text-green-600 ml-2">{autoDetectedData.items.length} adet kalem tespit edildi</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* İleri Butonu */}
-                  <div className="flex justify-end pt-4">
-                    <button
-                      type="button"
-                      onClick={() => setPdfUploadStep(2)}
-                      disabled={!file || pdfAnalysisLoading}
-                      className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {pdfAnalysisLoading ? 'Analiz Ediliyor...' : 'İleri'}
-                    </button>
-                  </div>
-                </>
-              ) : (
-                /* ADIM 2: Bilgileri Düzenle */
-                <>
-                  {/* Şirket Bilgileri */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Şirket
-                      </label>
-                      <select
-                        value={companyId}
-                        onChange={(e) => setCompanyId(e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                        required
-                      >
-                        <option value="">Şirket seçin...</option>
-                        {companies.map(comp => (
-                          <option key={comp.id} value={comp.id}>
-                            {comp.name} - {comp.tax_number}
-                          </option>
-                        ))}
-                      </select>
-                      {autoDetectedCompany && (
-                        <p className="text-sm text-green-600 mt-1">
-                          ✓ PDF'den otomatik tespit edildi: {autoDetectedCompany.name}
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Vergi Kimlik Numarası
-                      </label>
-                      <input
-                        type="text"
-                        value={taxNumber}
-                        onChange={(e) => setTaxNumber(e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="VKN girin..."
-                      />
-                      {taxNumberError && (
-                        <p className="text-red-600 text-sm mt-1">{taxNumberError}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Dönem Bilgileri */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Yıl
-                      </label>
-                      <input
-                        type="number"
-                        value={year}
-                        onChange={(e) => setYear(parseInt(e.target.value))}
-                        min="2010"
-                        max="2030"
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Dönem
-                      </label>
-                      <select
-                        value={period}
-                        onChange={(e) => setPeriod(e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                        required
-                      >
-                        <option value="YILLIK">Yıllık</option>
-                        <option value="Q1">1. Çeyrek</option>
-                        <option value="Q2">2. Çeyrek</option>
-                        <option value="Q3">3. Çeyrek</option>
-                        <option value="Q4">4. Çeyrek</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Notlar */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Notlar (İsteğe bağlı)
-                    </label>
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      rows={3}
-                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Bilanço hakkında notlar..."
-                    />
-                  </div>
-
-                  {/* Tespit Edilen Hesap Kalemleri Özeti */}
-                  {autoDetectedData && autoDetectedData.items && (
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">
-                        Tespit Edilen Hesap Kalemleri ({autoDetectedData.items.length} adet)
-                      </h4>
-                      <div className="max-h-32 overflow-y-auto">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-                          {autoDetectedData.items.slice(0, 8).map((item, index) => (
-                            <div key={index} className="flex justify-between bg-white p-2 rounded">
-                              <span className="font-medium">{item.account_code}</span>
-                              <span className="text-gray-600">{item.account_name}</span>
-                            </div>
-                          ))}
-                        </div>
-                        {autoDetectedData.items.length > 8 && (
-                          <p className="text-center text-gray-500 text-xs mt-2">
-                            +{autoDetectedData.items.length - 8} adet daha...
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Modal Alt Butonlar */}
-                  <div className="flex justify-between pt-4">
-                    <button
-                      type="button"
-                      onClick={() => setPdfUploadStep(1)}
-                      className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                    >
-                      Geri
-                    </button>
-                    <div className="flex space-x-3">
-                      <button
-                        type="button"
-                        onClick={closeUploadModal}
-                        className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                      >
-                        İptal
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={!file || !companyId || uploadLoading}
-                        className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {uploadLoading ? 'Analiz Ediliyor...' : 'Bilançoyu Kaydet'}
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
-            </form>
           </div>
         </div>
       )}
+
+      {/* Silme Onay Modalı */}
+      {showDeleteModal && balanceSheetToDelete && (
+        <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center" aria-labelledby="delete-modal-title" role="dialog" aria-modal="true">
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={closeDeleteModal}></div>
+          
+          <div className="relative bg-white rounded-lg max-w-md w-full mx-4 md:mx-auto overflow-hidden shadow-xl transform transition-all">
+            <div className="p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4" id="delete-modal-title">
+                Bilançoyu Sil
+              </h3>
+              
+              <div className="mb-6">
+                <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-red-700 font-medium">
+                        DİKKAT: Bu işlem geri alınamaz!
+                      </p>
+                      <p className="text-sm text-red-600 mt-1">
+                        Bilanço ve tüm ilgili veriler kalıcı olarak silinecektir.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <p className="text-gray-700 mb-3">
+                  <strong>{balanceSheetToDelete.company_name}</strong> şirketinin <strong>{balanceSheetToDelete.year} {balanceSheetToDelete.period}</strong> dönemine ait bilançosunu silmek istediğinize emin misiniz?
+                </p>
+                
+                <div className="bg-gray-50 p-3 rounded border">
+                  <p className="text-sm text-gray-600 mb-2">Silinecek veriler:</p>
+                  <ul className="text-sm text-gray-600 list-disc pl-4">
+                    <li>Bilanço hesap kalemleri ve tutarları</li>
+                    <li>PDF dosyası ve analiz sonuçları</li>
+                    <li>İlgili raporlar ve analizler</li>
+                  </ul>
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                  onClick={closeDeleteModal}
+                >
+                  İptal
+                </button>
+                <button
+                  type="button"
+                  className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                  onClick={handleDeleteBalanceSheet}
+                >
+                  Evet, Kalıcı Olarak Sil
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Duplicate Bilanço Uyarı Modalı */}
+      {showDuplicateWarning && duplicateBalanceData && (
+        <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center" aria-labelledby="duplicate-warning-modal-title" role="dialog" aria-modal="true">
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setShowDuplicateWarning(false)}></div>
+          
+          <div className="relative bg-white rounded-lg max-w-2xl w-full mx-4 md:mx-auto overflow-hidden shadow-xl transform transition-all">
+            <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4">
+              <h3 className="text-xl font-bold text-white flex items-center" id="duplicate-warning-modal-title">
+                <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                Mevcut Bilanço Tespit Edildi
+              </h3>
+              <p className="text-amber-100 mt-1">Aynı dönem için zaten bilanço mevcut</p>
+            </div>
+            
+            <div className="p-6">
+              <div className="mb-6">
+                <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-amber-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-amber-700 font-medium">
+                        Bu şirket ve dönem için zaten bir bilanço sisteme kayıtlı!
+                      </p>
+                      <p className="text-sm text-amber-700 mt-1">
+                        Devam ederseniz mevcut bilanço güncellenecektir ve eski veriler kalıcı olarak silinecektir.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <h4 className="font-medium text-red-800 mb-2">Mevcut Bilanço:</h4>
+                    <div className="space-y-2 text-red-700">
+                      <p><strong>Şirket:</strong> {duplicateBalanceData.existingBalance.company_name}</p>
+                      <p><strong>Dönem:</strong> {duplicateBalanceData.existingBalance.year} - {duplicateBalanceData.existingBalance.period}</p>
+                      <p><strong>Oluşturulma:</strong> {formatDateDDMMYYYY(duplicateBalanceData.existingBalance.creation_date)}</p>
+                      {duplicateBalanceData.existingBalance.notes && (
+                        <p><strong>Notlar:</strong> {duplicateBalanceData.existingBalance.notes}</p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <h4 className="font-medium text-green-800 mb-2">Yüklenecek Yeni Bilanço:</h4>
+                    <div className="space-y-2 text-green-700">
+                      <p><strong>Şirket:</strong> {duplicateBalanceData.newData.company}</p>
+                      <p><strong>Dönem:</strong> {duplicateBalanceData.newData.year} - {duplicateBalanceData.newData.period}</p>
+                      <p><strong>PDF Dosyası:</strong> {file?.name}</p>
+                      {notes && (
+                        <p><strong>Notlar:</strong> {notes}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="mt-6 bg-blue-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-blue-800 mb-2">Seçenekleriniz:</h4>
+                  <ul className="list-disc pl-5 text-sm text-blue-700 space-y-1">
+                    <li><strong>Güncelle:</strong> Mevcut bilançoyu yeni PDF ile değiştir (önerilen)</li>
+                    <li><strong>İptal:</strong> Yükleme işlemini durdur ve farklı dönem seç</li>
+                    <li><strong>Değiştir:</strong> Yıl veya dönem bilgisini değiştir</li>
+                  </ul>
+                  
+                  <div className="mt-3 p-3 bg-blue-100 rounded border">
+                    <p className="text-sm text-blue-800">
+                      <strong>DİKKAT:</strong> Güncelleme işlemi geri alınamaz. Mevcut bilanço verileri kalıcı olarak değiştirilecektir.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
+                <button
+                  type="button"
+                  className="w-full sm:w-auto bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors"
+                  onClick={() => {
+                    setShowDuplicateWarning(false);
+                    setDuplicateBalanceData(null);
+                    setProceedWithUpdate(false);
+                  }}
+                >
+                  İptal Et
+                </button>
+                <button
+                  type="button"
+                  className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors"
+                  onClick={() => {
+                    setShowDuplicateWarning(false);
+                    // Form alanlarını düzenleme moduna geç
+                    setPdfUploadStep(2);
+                  }}
+                >
+                  Dönem Bilgilerini Değiştir
+                </button>
+                <button
+                  type="button"
+                  className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors"
+                  onClick={() => {
+                    setShowDuplicateWarning(false);
+                    setProceedWithUpdate(true);
+                    // Güncelleme ile devam et
+                    submitBalanceSheet();
+                  }}
+                >
+                  ✓ Mevcut Bilançoyu Güncelle
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Yeni JSON Analiz Butonu */}
+      <div className="mb-6">
+        <button
+          onClick={analyzeWithJsonData}
+          className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-medium rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+        >
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        📊 JSON Verisi ile Analiz Dene
+        </button>
+      </div>
     </div>
   );
 };
