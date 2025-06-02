@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { CompanyAPI } from '../api';
+import ModernAlert from '../components/ModernAlert';
 
 // Tarih formatı DDMMYYYY
 const formatDateDDMMYYYY = (dateString) => {
@@ -54,6 +55,7 @@ const CompanyDetail = () => {
   const [companySummary, setCompanySummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showQuickActions, setShowQuickActions] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ isOpen: false });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -111,7 +113,20 @@ const CompanyDetail = () => {
       navigate(`/balance-sheets/${latestBalanceSheetId}/analysis`);
     } else {
       setShowQuickActions(false);
-      alert('Bu şirket için henüz finansal analiz yapılabilecek bilanço bulunmamaktadır. Lütfen önce bilanço ekleyin.');
+      setAlertConfig({
+        isOpen: true,
+        type: 'warning',
+        title: 'Finansal Analiz Yapılamıyor',
+        message: 'Bu şirket için henüz finansal analiz yapılabilecek bilanço bulunmamaktadır. Lütfen önce bilanço ekleyin.',
+        confirmText: 'Bilanço Ekle',
+        cancelText: 'Tamam',
+        showCancel: true,
+        onConfirm: () => {
+          setAlertConfig({ isOpen: false });
+          navigate('/balance-sheets/new');
+        },
+        onClose: () => setAlertConfig({ isOpen: false })
+      });
     }
   };
 
@@ -154,7 +169,13 @@ const CompanyDetail = () => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
         </svg>
       ),
-      action: () => alert('Şirket düzenleme özelliği yakında eklenecek'),
+      action: () => setAlertConfig({
+        isOpen: true,
+        type: 'info',
+        title: 'Yakında Gelecek',
+        message: 'Şirket düzenleme özelliği yakında eklenecek.',
+        onClose: () => setAlertConfig({ isOpen: false })
+      }),
       color: 'bg-amber-600 hover:bg-amber-700'
     }
   ];
@@ -517,6 +538,9 @@ const CompanyDetail = () => {
           </div>
         </div>
       </div>
+      
+      {/* Modern Alert */}
+      <ModernAlert {...alertConfig} />
     </div>
   );
 };

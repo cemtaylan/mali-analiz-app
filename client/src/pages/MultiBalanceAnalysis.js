@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { BalanceSheetAPI, CompanyAPI } from '../api';
+import ModernAlert from '../components/ModernAlert';
 
 // Hesap adı formatlama fonksiyonu
 const formatAccountName = (name) => {
@@ -70,80 +71,13 @@ const MultiBalanceAnalysis = () => {
   const [showEmptyRows, setShowEmptyRows] = useState(false);
   const [allExpanded, setAllExpanded] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [alertConfig, setAlertConfig] = useState({ isOpen: false });
   
   // Hiyerarşik yapı
   const [activeHierarchy, setActiveHierarchy] = useState([]);
   const [passiveHierarchy, setPassiveHierarchy] = useState([]);
   const [columnHeaders, setColumnHeaders] = useState([]);
   const [totals, setTotals] = useState({ aktif: {}, pasif: {} });
-
-  // Demo verileri - useMemo ile optimize et
-  const demoCompanies = useMemo(() => [
-    { id: 1, name: 'MEMSAN MAKİNA İMALAT SANAYİ VE TİCARET LTD.ŞTİ.' },
-    { id: 2, name: 'ABC Şirketi' },
-    { id: 3, name: 'XYZ Holding' },
-    { id: 4, name: 'Demo Tekstil A.Ş.' },
-    { id: 5, name: 'Teknoloji Yazılım Ltd.' }
-  ], []);
-
-  const demoBalanceSheets = useMemo(() => [
-    { 
-      id: 4, 
-      company_name: 'MEMSAN MAKİNA İMALAT SANAYİ VE TİCARET LTD.ŞTİ.', 
-      year: 2024, 
-      period: 'YILLIK', 
-      creation_date: '2024-12-31',
-      years: ['2021', '2022', '2023', '2024']
-    },
-    { 
-      id: 7, 
-      company_name: 'MEMSAN MAKİNA İMALAT SANAYİ VE TİCARET LTD.ŞTİ.', 
-      year: 2024, 
-      period: 'Q2', 
-      creation_date: '2024-06-30',
-      years: ['2023', '2024']
-    },
-    { 
-      id: 9, 
-      company_name: 'MEMSAN MAKİNA İMALAT SANAYİ VE TİCARET LTD.ŞTİ.', 
-      year: 2023, 
-      period: 'YILLIK', 
-      creation_date: '2023-12-31',
-      years: ['2020', '2021', '2022', '2023']
-    },
-    { 
-      id: 10, 
-      company_name: 'MEMSAN MAKİNA İMALAT SANAYİ VE TİCARET LTD.ŞTİ.', 
-      year: 2024, 
-      period: 'Q3', 
-      creation_date: '2024-09-30',
-      years: ['2023', '2024']
-    },
-    { 
-      id: 11, 
-      company_name: 'MEMSAN MAKİNA İMALAT SANAYİ VE TİCARET LTD.ŞTİ.', 
-      year: 2022, 
-      period: 'YILLIK', 
-      creation_date: '2022-12-31',
-      years: ['2019', '2020', '2021', '2022']
-    },
-    { 
-      id: 1, 
-      company_name: 'ABC Şirketi', 
-      year: 2024, 
-      period: 'Q1', 
-      creation_date: '2024-03-31',
-      years: ['2023', '2024']
-    },
-    { 
-      id: 2, 
-      company_name: 'XYZ Holding', 
-      year: 2023, 
-      period: 'YILLIK', 
-      creation_date: '2023-12-31',
-      years: ['2020', '2021', '2022', '2023']
-    }
-  ], []);
 
   // Yıl aralığı oluşturma fonksiyonu
   const generateYearRange = useCallback((baseYear) => {
@@ -170,16 +104,18 @@ const MultiBalanceAnalysis = () => {
       
     } catch (error) {
       console.error('❌ Şirketler yüklenirken hata:', error);
-      setApiError('Şirket verileri yüklenirken hata oluştu. Demo veriler gösteriliyor.');
-      
-      // Hata durumunda demo veri kullan
-      console.log('🔄 Demo şirket verileri kullanılıyor');
-      setCompanies(demoCompanies);
+      setAlertConfig({
+        isOpen: true,
+        type: 'error',
+        title: 'Veri Yükleme Hatası',
+        message: 'Şirket verileri yüklenirken hata oluştu. Lütfen sayfayı yenileyin veya daha sonra tekrar deneyin.',
+        onClose: () => setAlertConfig({ isOpen: false })
+      });
       
     } finally {
       setLoading(false);
     }
-  }, [demoCompanies]);
+  }, []);
 
   // Bilançoları API'den çek
   const fetchBalanceSheets = useCallback(async () => {
@@ -200,6 +136,18 @@ const MultiBalanceAnalysis = () => {
       
       console.log('✅ Bilançolar başarıyla alındı:', companyBalances.length);
       
+      if (companyBalances.length === 0) {
+        setAlertConfig({
+          isOpen: true,
+          type: 'warning',
+          title: 'Bilanço Bulunamadı',
+          message: 'Seçilen şirket için bilanço bulunamadı. Lütfen önce bilanço ekleyin.',
+          onClose: () => setAlertConfig({ isOpen: false })
+        });
+        setAvailableBalances([]);
+        return;
+      }
+      
       // Her bilanço için mevcut yıl bilgilerini ekle
       const processedBalances = companyBalances.map(balance => ({
         ...balance,
@@ -212,17 +160,18 @@ const MultiBalanceAnalysis = () => {
       
     } catch (error) {
       console.error('❌ Bilançolar yüklenirken hata:', error);
-      setApiError('Bilanço verileri yüklenirken hata oluştu. Demo veriler gösteriliyor.');
-      
-      // Hata durumunda demo veri kullan
-      console.log('🔄 Demo bilanço verileri kullanılıyor');
-      const demoCompanyBalances = demoBalanceSheets.filter(b => b.company_name === selectedCompany);
-      setAvailableBalances(demoCompanyBalances);
+      setAlertConfig({
+        isOpen: true,
+        type: 'error',
+        title: 'Bilanço Yükleme Hatası',
+        message: 'Bilanço verileri yüklenirken hata oluştu. Lütfen tekrar deneyin.',
+        onClose: () => setAlertConfig({ isOpen: false })
+      });
       
     } finally {
       setLoading(false);
     }
-  }, [selectedCompany, companies, demoBalanceSheets, generateYearRange]);
+  }, [selectedCompany, companies, generateYearRange]);
 
   // İlk yükleme - şirketleri çek
   useEffect(() => {
@@ -375,45 +324,18 @@ const MultiBalanceAnalysis = () => {
         }
       }
       
-      // Eğer gerçek veri yoksa demo veri kullan
+      // Veri kontrolü ve hata yönetimi
       if (processedData.length === 0) {
-        console.log('🔄 Gerçek veri bulunamadı, demo veriler kullanılıyor');
-        setApiError('Gerçek bilanço verileri bulunamadı. Demo veriler gösteriliyor.');
-        
-        const mockData = [
-          { code: 'A.1', name: 'I. DÖNEN VARLIKLAR', category: 'Aktif', isGroup: true },
-          { code: 'A.1.1', name: 'A. HAZIR DEĞERLER', category: 'Aktif', isSubGroup: true },
-          { code: 'A.1.1.1', name: '1. Kasa', category: 'Aktif' },
-          { code: 'A.1.1.3', name: '3. Bankalar', category: 'Aktif' },
-          { code: 'A.1.3', name: 'C. TİCARİ ALACAKLAR', category: 'Aktif', isSubGroup: true },
-          { code: 'A.1.3.1', name: '1. Alıcılar', category: 'Aktif' },
-          { code: 'A.1.5', name: 'E. STOKLAR', category: 'Aktif', isSubGroup: true },
-          { code: 'A.1.5.1', name: '1. İlk Madde ve Malzeme', category: 'Aktif' },
-          { code: 'A.2', name: 'II. DURAN VARLIKLAR', category: 'Aktif', isGroup: true },
-          { code: 'A.2.1', name: 'A. MADDİ DURAN VARLIKLAR', category: 'Aktif', isSubGroup: true },
-          { code: 'A.2.1.1', name: '1. Arazi ve Arsalar', category: 'Aktif' },
-          { code: 'A.2.1.2', name: '2. Binalar', category: 'Aktif' },
-          { code: 'A.2.1.3', name: '3. Makina ve Teçhizat', category: 'Aktif' },
-          { code: 'P.1', name: 'III. KISA VADELİ YABANCI KAYNAKLAR', category: 'Pasif', isGroup: true },
-          { code: 'P.1.1', name: 'A. MALİ BORÇLAR', category: 'Pasif', isSubGroup: true },
-          { code: 'P.1.1.1', name: '1. Banka Kredileri', category: 'Pasif' },
-          { code: 'P.1.3', name: 'C. TİCARİ BORÇLAR', category: 'Pasif', isSubGroup: true },
-          { code: 'P.1.3.1', name: '1. Satıcılar', category: 'Pasif' },
-          { code: 'P.2', name: 'IV. UZUN VADELİ YABANCI KAYNAKLAR', category: 'Pasif', isGroup: true },
-          { code: 'P.3', name: 'V. ÖZ KAYNAKLAR', category: 'Pasif', isGroup: true },
-          { code: 'P.3.1', name: 'A. ÖDENMİŞ SERMAYE', category: 'Pasif', isSubGroup: true },
-          { code: 'P.3.1.1', name: '1. Sermaye', category: 'Pasif' }
-        ];
-        
-        mockData.forEach(item => {
-          headers.forEach(header => {
-            // Daha gerçekçi demo veriler
-            const baseAmount = Math.floor(Math.random() * 10000000) + 500000;
-            const variation = (Math.random() - 0.5) * 0.2; // %20 varyasyon
-            item[header] = Math.floor(baseAmount * (1 + variation));
-          });
-          processedData.push(item);
+        console.log('⚠️ Analiz için veri bulunamadı');
+        setAlertConfig({
+          isOpen: true,
+          type: 'warning',
+          title: 'Analiz Verisi Bulunamadı',
+          message: 'Seçilen bilançolarda analiz yapılabilir veri bulunamadı. Lütfen bilançoların doğru formatlandığından emin olun.',
+          onClose: () => setAlertConfig({ isOpen: false })
         });
+        setLoading(false);
+        return;
       }
       
       console.log('📈 Toplam işlenen hesap kalemi:', processedData.length);
@@ -427,7 +349,13 @@ const MultiBalanceAnalysis = () => {
       
     } catch (error) {
       console.error('❌ Analiz hatası:', error);
-      setApiError('Analiz sırasında bir hata oluştu: ' + error.message);
+      setAlertConfig({
+        isOpen: true,
+        type: 'error',
+        title: 'Analiz Hatası',
+        message: `Analiz sırasında bir hata oluştu: ${error.message}`,
+        onClose: () => setAlertConfig({ isOpen: false })
+      });
     } finally {
       setLoading(false);
     }
@@ -592,7 +520,7 @@ const MultiBalanceAnalysis = () => {
             <div className="flex items-center">
               <div className="bg-white bg-opacity-20 p-4 rounded-xl mr-4">
                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v10a2 2 0 002 2z" />
                 </svg>
               </div>
               <div>
@@ -1034,6 +962,9 @@ const MultiBalanceAnalysis = () => {
           </>
         )}
       </div>
+      
+      {/* Modern Alert */}
+      <ModernAlert {...alertConfig} />
     </div>
   );
 };
