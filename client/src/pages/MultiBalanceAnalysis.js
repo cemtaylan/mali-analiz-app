@@ -224,14 +224,21 @@ const MultiBalanceAnalysis = () => {
           console.log(`📋 Bilanço ${balance.id} detayı alınıyor...`);
           const balanceDetail = await BalanceSheetAPI.getBalanceSheetDetail(balance.id);
           
+          console.log(`🔍 Bilanço ${balance.id} API yanıtı:`, balanceDetail);
+          
+          // Ana veri yapısını kontrol et
           if (balanceDetail && balanceDetail.detected_data && balanceDetail.detected_data.items) {
-            console.log(`✅ Bilanço ${balance.id} verisi alındı:`, balanceDetail.detected_data.items.length, 'kalem');
+            console.log(`✅ Bilanço ${balance.id} detected_data.items bulundu:`, balanceDetail.detected_data.items.length, 'kalem');
             
             // API'den gelen veriler
-            balanceDetail.detected_data.items.forEach(item => {
-              // Hesap kodunu al (code, definition, account_code, id gibi alanlardan)
-              const accountCode = item.code || item.definition || item.account_code || item.id || '';
-              const accountName = item.description || item.name || item.account_name || accountCode;
+            balanceDetail.detected_data.items.forEach((item, index) => {
+              console.log(`📋 Kalem ${index}:`, item);
+              
+              // Hesap kodunu al (çeşitli alanlardan dene)
+              const accountCode = item.code || item.definition || item.account_code || item.id || item.account_number || '';
+              const accountName = item.description || item.name || item.account_name || item.title || accountCode;
+              
+              console.log(`🔍 Parse edilen kod: "${accountCode}", isim: "${accountName}"`);
               
               // Hesap kategorisini belirle
               let category = 'Aktif';
@@ -239,88 +246,147 @@ const MultiBalanceAnalysis = () => {
                 category = 'Pasif';
               }
               
-              // Bu hesabın daha önceden eklenip eklenmediğini kontrol et
-              let existingItem = processedData.find(existing => existing.code === accountCode);
+              // Eğer hesap kodu boşsa ve isim varsa, isimden kategori belirle
+              if (!accountCode && accountName) {
+                if (accountName.toLowerCase().includes('pasif') || 
+                    accountName.toLowerCase().includes('borç') || 
+                    accountName.includes('kaynak')) {
+                  category = 'Pasif';
+                }
+              }
               
-              if (!existingItem) {
+              // Bu hesabın daha önceden eklenip eklenmediğini kontrol et
+              const itemKey = accountCode || accountName || `item_${index}`;
+              let existingItem = processedData.find(existing => existing.code === itemKey);
+              
+              if (!existingItem && (accountCode || accountName)) {
                 existingItem = {
-                  code: accountCode,
+                  code: itemKey,
                   name: formatAccountName(accountName),
                   category: category,
                   isGroup: /^[A-P]\.\d*$/.test(accountCode) && accountCode.split('.').length === 2,
                   isSubGroup: /^[A-P]\.\d+\.\d*$/.test(accountCode) && accountCode.split('.').length === 3
                 };
                 processedData.push(existingItem);
+                console.log(`➕ Yeni kalem eklendi: ${existingItem.code} - ${existingItem.name} (${existingItem.category})`);
               }
               
               // Her yıl için veri ekle
-              balance.years.forEach(year => {
-                const columnKey = `${balance.year}-${balance.period}-${year}`;
-                
-                // API'den gelen veriyi kullan, öncelik sırasına göre
-                const yearValue = item[year] || item.current_amount || item.amount || 
-                                 item['2024'] || item['2023'] || item['2022'] || item['2021'] || 0;
-                
-                // parseNumericValue fonksiyonunu kullan
-                const numericValue = parseNumericValue(yearValue);
-                existingItem[columnKey] = numericValue;
-              });
+              if (existingItem) {
+                balance.years.forEach(year => {
+                  const columnKey = `${balance.year}-${balance.period}-${year}`;
+                  
+                  // API'den gelen veriyi kullan, öncelik sırasına göre
+                  const yearValue = item[year] || item.current_amount || item.amount || 
+                                   item.value || item.current_value || item.balance ||
+                                   item['2024'] || item['2023'] || item['2022'] || item['2021'] || 0;
+                  
+                  console.log(`💰 ${itemKey} - ${year}: ${yearValue}`);
+                  
+                  // parseNumericValue fonksiyonunu kullan
+                  const numericValue = parseNumericValue(yearValue);
+                  existingItem[columnKey] = numericValue;
+                });
+              }
             });
-          } else if (balanceDetail && balanceDetail.balance_sheet && balanceDetail.balance_sheet.raw_pdf_data) {
-            // Alternatif veri yapısı - raw_pdf_data içinde items var
-            console.log(`📄 Bilanço ${balance.id} için raw_pdf_data kullanılıyor...`);
-            try {
-              const rawData = JSON.parse(balanceDetail.balance_sheet.raw_pdf_data);
-              if (rawData.items && Array.isArray(rawData.items)) {
-                console.log(`✅ Raw data'dan ${rawData.items.length} kalem bulundu`);
+          } else if (balanceDetail && balanceDetail.balance_sheet) {
+            console.log(`📄 Bilanço ${balance.id} için balance_sheet yapısı kontrol ediliyor...`);
+            
+            // balance_sheet.detected_data kontrol et
+            if (balanceDetail.balance_sheet.detected_data && balanceDetail.balance_sheet.detected_data.items) {
+              console.log(`✅ balance_sheet.detected_data.items bulundu:`, balanceDetail.balance_sheet.detected_data.items.length, 'kalem');
+              
+              balanceDetail.balance_sheet.detected_data.items.forEach((item, index) => {
+                const accountCode = item.code || item.definition || item.account_code || item.id || '';
+                const accountName = item.description || item.name || item.account_name || accountCode;
                 
-                rawData.items.forEach(item => {
-                  // Hesap kodunu al
-                  const accountCode = item.definition || item.code || item.account_code || item.id || '';
-                  const accountName = item.account_name || item.description || item.name || accountCode;
-                  
-                  // Hesap kategorisini belirle
-                  let category = 'Aktif';
-                  if (accountCode && (accountCode.startsWith('P.') || accountCode.toLowerCase().includes('pasif'))) {
-                    category = 'Pasif';
-                  }
-                  
-                  // Bu hesabın daha önceden eklenip eklenmediğini kontrol et
-                  let existingItem = processedData.find(existing => existing.code === accountCode);
-                  
-                  if (!existingItem) {
-                    existingItem = {
-                      code: accountCode,
-                      name: formatAccountName(accountName),
-                      category: category,
-                      isGroup: /^[A-P]\.\d*$/.test(accountCode) && accountCode.split('.').length === 2,
-                      isSubGroup: /^[A-P]\.\d+\.\d*$/.test(accountCode) && accountCode.split('.').length === 3
-                    };
-                    processedData.push(existingItem);
-                  }
-                  
-                  // Her yıl için veri ekle
+                let category = 'Aktif';
+                if (accountCode && (accountCode.startsWith('P.') || accountCode.toLowerCase().includes('pasif'))) {
+                  category = 'Pasif';
+                }
+                
+                const itemKey = accountCode || accountName || `item_${index}`;
+                let existingItem = processedData.find(existing => existing.code === itemKey);
+                
+                if (!existingItem && (accountCode || accountName)) {
+                  existingItem = {
+                    code: itemKey,
+                    name: formatAccountName(accountName),
+                    category: category,
+                    isGroup: /^[A-P]\.\d*$/.test(accountCode) && accountCode.split('.').length === 2,
+                    isSubGroup: /^[A-P]\.\d+\.\d*$/.test(accountCode) && accountCode.split('.').length === 3
+                  };
+                  processedData.push(existingItem);
+                }
+                
+                if (existingItem) {
                   balance.years.forEach(year => {
                     const columnKey = `${balance.year}-${balance.period}-${year}`;
-                    
-                    // Raw data'dan veriyi al
-                    const yearValue = item[year] || item['2024'] || item['2023'] || item['2022'] || item['2021'] || 0;
-                    
-                    // parseNumericValue fonksiyonunu kullan
+                    const yearValue = item[year] || item.current_amount || item.amount || 0;
                     const numericValue = parseNumericValue(yearValue);
                     existingItem[columnKey] = numericValue;
                   });
-                });
+                }
+              });
+            } else if (balanceDetail.balance_sheet.raw_pdf_data) {
+              // raw_pdf_data içinde items var
+              console.log(`📄 Bilanço ${balance.id} için raw_pdf_data kullanılıyor...`);
+              try {
+                const rawData = JSON.parse(balanceDetail.balance_sheet.raw_pdf_data);
+                console.log(`🔍 Raw data yapısı:`, rawData);
+                
+                if (rawData.items && Array.isArray(rawData.items)) {
+                  console.log(`✅ Raw data'dan ${rawData.items.length} kalem bulundu`);
+                  
+                  rawData.items.forEach((item, index) => {
+                    const accountCode = item.definition || item.code || item.account_code || item.id || '';
+                    const accountName = item.account_name || item.description || item.name || accountCode;
+                    
+                    let category = 'Aktif';
+                    if (accountCode && (accountCode.startsWith('P.') || accountCode.toLowerCase().includes('pasif'))) {
+                      category = 'Pasif';
+                    }
+                    
+                    const itemKey = accountCode || accountName || `raw_item_${index}`;
+                    let existingItem = processedData.find(existing => existing.code === itemKey);
+                    
+                    if (!existingItem && (accountCode || accountName)) {
+                      existingItem = {
+                        code: itemKey,
+                        name: formatAccountName(accountName),
+                        category: category,
+                        isGroup: /^[A-P]\.\d*$/.test(accountCode) && accountCode.split('.').length === 2,
+                        isSubGroup: /^[A-P]\.\d+\.\d*$/.test(accountCode) && accountCode.split('.').length === 3
+                      };
+                      processedData.push(existingItem);
+                    }
+                    
+                    if (existingItem) {
+                      balance.years.forEach(year => {
+                        const columnKey = `${balance.year}-${balance.period}-${year}`;
+                        const yearValue = item[year] || item['2024'] || item['2023'] || item['2022'] || item['2021'] || 0;
+                        const numericValue = parseNumericValue(yearValue);
+                        existingItem[columnKey] = numericValue;
+                      });
+                    }
+                  });
+                }
+              } catch (parseError) {
+                console.error(`❌ Raw PDF data parse edilemedi:`, parseError);
               }
-            } catch (parseError) {
-              console.error(`❌ Raw PDF data parse edilemedi:`, parseError);
             }
           } else {
-            console.warn(`⚠️ Bilanço ${balance.id} için veri bulunamadı`);
+            console.warn(`⚠️ Bilanço ${balance.id} için veri bulunamadı. API yanıtı:`, balanceDetail);
           }
         } catch (error) {
           console.error(`❌ Bilanço ${balance.id} detayı alınırken hata:`, error);
-          setApiError(`Bilanço ${balance.id} verisi alınırken hata oluştu.`);
+          setAlertConfig({
+            isOpen: true,
+            type: 'error',
+            title: 'Veri Alma Hatası',
+            message: `Bilanço ${balance.id} verisi alınırken hata oluştu: ${error.message}`,
+            onClose: () => setAlertConfig({ isOpen: false })
+          });
         }
       }
       

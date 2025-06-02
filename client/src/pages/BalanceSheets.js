@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { BalanceSheetAPI, CompanyAPI } from '../api';
+import ModernAlert from '../components/ModernAlert';
 
 // Tarih formatı DDMMYYYY
 const formatDateDDMMYYYY = (dateString) => {
@@ -66,6 +67,7 @@ const BalanceSheets = () => {
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
   const [duplicateBalanceData, setDuplicateBalanceData] = useState(null);
   const [proceedWithUpdate, setProceedWithUpdate] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ isOpen: false });
   
   const location = useLocation();
   const navigate = useNavigate();
@@ -738,8 +740,20 @@ const BalanceSheets = () => {
 
   // Silme modalını aç
   const handleDeleteClick = (sheet) => {
-    setBalanceSheetToDelete(sheet);
-    setShowDeleteModal(true);
+    setAlertConfig({
+      isOpen: true,
+      type: 'warning',
+      title: 'Bilanço Silinecek',
+      message: `${sheet.company_name} şirketinin ${sheet.year} ${sheet.period} dönemi bilançosunu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`,
+      confirmText: 'Sil',
+      cancelText: 'İptal',
+      showCancel: true,
+      onConfirm: () => {
+        setAlertConfig({ isOpen: false });
+        handleDeleteBalanceSheet(sheet);
+      },
+      onClose: () => setAlertConfig({ isOpen: false })
+    });
   };
   
   // Silme modalını kapat
@@ -749,27 +763,39 @@ const BalanceSheets = () => {
   };
   
   // Bilançoyu sil
-  const handleDeleteBalanceSheet = async () => {
+  const handleDeleteBalanceSheet = async (sheet) => {
     try {
       setLoading(true);
-      // await BalanceSheetAPI.deleteBalanceSheet(balanceSheetToDelete.id);
       
-      // Geçici olarak mock silme - listeyi güncelle
-      setBalanceSheets(balanceSheets.filter(sheet => sheet.id !== balanceSheetToDelete.id));
-      setFilteredBalanceSheets(filteredBalanceSheets.filter(sheet => sheet.id !== balanceSheetToDelete.id));
+      console.log('🗑️ Bilanço siliniyor:', sheet.id);
+      await BalanceSheetAPI.deleteBalanceSheet(sheet.id);
       
-      setSuccessMessage(`${balanceSheetToDelete.company} - ${balanceSheetToDelete.year} ${balanceSheetToDelete.period} bilançosu başarıyla silindi.`);
-        setTimeout(() => {
-          setSuccessMessage('');
-        }, 5000);
+      // Listeyi güncelle
+      const updatedSheets = balanceSheets.filter(s => s.id !== sheet.id);
+      setBalanceSheets(updatedSheets);
+      setFilteredBalanceSheets(filteredBalanceSheets.filter(s => s.id !== sheet.id));
       
-    } catch (err) {
-      console.error("Bilanço silme sırasında hata:", err);
-      setError('Bilanço silinirken bir hata oluştu. Lütfen tekrar deneyin.');
+      setAlertConfig({
+        isOpen: true,
+        type: 'success',
+        title: 'Bilanço Silindi',
+        message: `${sheet.company_name} - ${sheet.year} ${sheet.period} bilançosu başarıyla silindi.`,
+        onClose: () => setAlertConfig({ isOpen: false })
+      });
+      
+      console.log('✅ Bilanço başarıyla silindi');
+      
+    } catch (error) {
+      console.error("❌ Bilanço silme sırasında hata:", error);
+      setAlertConfig({
+        isOpen: true,
+        type: 'error',
+        title: 'Silme Hatası',
+        message: 'Bilanço silinirken bir hata oluştu. Lütfen tekrar deneyin.',
+        onClose: () => setAlertConfig({ isOpen: false })
+      });
     } finally {
       setLoading(false);
-      setShowDeleteModal(false);
-      setBalanceSheetToDelete(null);
     }
   };
 
@@ -1169,6 +1195,9 @@ const BalanceSheets = () => {
           })
         )}
       </div>
+      
+      {/* Modern Alert */}
+      <ModernAlert {...alertConfig} />
     </div>
   );
 };
