@@ -1198,6 +1198,131 @@ const BalanceSheets = () => {
       
       {/* Modern Alert */}
       <ModernAlert {...alertConfig} />
+
+      {/* PDF Yükleme Modal'ı */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-900">PDF'den Bilanço Yükle</h2>
+              <button
+                onClick={closeUploadModal}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <form onSubmit={handlePdfUpload} className="space-y-4">
+              {/* PDF Dosya Seçimi */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  PDF Dosyası
+                </label>
+                <input
+                  type="file"
+                  accept=".pdf"
+                  onChange={handleFileChange}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  required
+                />
+                {uploadError && (
+                  <p className="text-red-600 text-sm mt-1">{uploadError}</p>
+                )}
+              </div>
+
+              {/* Şirket Seçimi */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Şirket
+                </label>
+                <select
+                  value={companyId}
+                  onChange={(e) => setCompanyId(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
+                  <option value="">Şirket seçin...</option>
+                  {companies.map(comp => (
+                    <option key={comp.id} value={comp.id}>
+                      {comp.name} - {comp.tax_number}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Yıl */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Yıl
+                </label>
+                <input
+                  type="number"
+                  value={year}
+                  onChange={(e) => setYear(parseInt(e.target.value))}
+                  min="2010"
+                  max="2030"
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  required
+                />
+              </div>
+
+              {/* Dönem */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Dönem
+                </label>
+                <select
+                  value={period}
+                  onChange={(e) => setPeriod(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
+                  <option value="YILLIK">Yıllık</option>
+                  <option value="Q1">1. Çeyrek</option>
+                  <option value="Q2">2. Çeyrek</option>
+                  <option value="Q3">3. Çeyrek</option>
+                  <option value="Q4">4. Çeyrek</option>
+                </select>
+              </div>
+
+              {/* Notlar */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Notlar (İsteğe bağlı)
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Bilanço hakkında notlar..."
+                />
+              </div>
+
+              {/* Modal Alt Butonlar */}
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={closeUploadModal}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  disabled={!file || !companyId || uploadLoading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {uploadLoading ? 'Yükleniyor...' : 'Analiz Et'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
