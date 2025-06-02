@@ -746,7 +746,7 @@ const BalanceSheets = () => {
     setPreview(null);
     setAutoDetectedData(null);
     setAutoDetectedCompany(null);
-    setPdfUploadStep(1);
+    setPdfUploadStep(1); // Adımı sıfırla
     setPdfAnalysisLoading(false);
     
     // Duplicate kontrolü state'lerini de temizle
@@ -1221,12 +1221,14 @@ const BalanceSheets = () => {
       {/* Modern Alert */}
       <ModernAlert {...alertConfig} />
 
-      {/* PDF Yükleme Modal'ı */}
+      {/* PDF Yükleme Modal'ı - Gelişmiş Versiyon */}
       {showUploadModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-900">PDF'den Bilanço Yükle</h2>
+              <h2 className="text-xl font-bold text-gray-900">
+                {pdfUploadStep === 1 ? 'PDF Bilanço Yükle' : 'Bilanço Bilgilerini Düzenle'}
+              </h2>
               <button
                 onClick={closeUploadModal}
                 className="text-gray-500 hover:text-gray-700"
@@ -1236,111 +1238,289 @@ const BalanceSheets = () => {
                 </svg>
               </button>
             </div>
+
+            {/* Adım Göstergesi */}
+            <div className="mb-6">
+              <div className="flex items-center">
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full ${pdfUploadStep >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'}`}>
+                  <span className="text-sm font-medium">1</span>
+                </div>
+                <div className={`flex-1 h-1 ${pdfUploadStep >= 2 ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full ${pdfUploadStep >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'}`}>
+                  <span className="text-sm font-medium">2</span>
+                </div>
+              </div>
+              <div className="flex justify-between mt-2">
+                <span className="text-sm text-gray-600">PDF Seçimi</span>
+                <span className="text-sm text-gray-600">Bilgileri Düzenle</span>
+              </div>
+            </div>
             
-            <form onSubmit={handlePdfUpload} className="space-y-4">
-              {/* PDF Dosya Seçimi */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  PDF Dosyası
-                </label>
-                <input
-                  type="file"
-                  accept=".pdf"
-                  onChange={handleFileChange}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-                {uploadError && (
-                  <p className="text-red-600 text-sm mt-1">{uploadError}</p>
-                )}
-              </div>
+            <form onSubmit={handlePdfUpload} className="space-y-6">
+              {pdfUploadStep === 1 ? (
+                /* ADIM 1: PDF Seçimi ve Analiz */
+                <>
+                  {/* PDF Dosya Seçimi */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      PDF Bilanço Dosyası
+                    </label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
+                      <input
+                        type="file"
+                        accept=".pdf"
+                        onChange={handleFileChange}
+                        className="hidden"
+                        id="pdf-upload"
+                        required
+                      />
+                      <label htmlFor="pdf-upload" className="cursor-pointer">
+                        <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                          <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        <div className="mt-2">
+                          <p className="text-sm text-gray-600">
+                            {file ? (
+                              <span className="text-blue-600 font-medium">{file.name}</span>
+                            ) : (
+                              <>
+                                <span className="font-medium text-blue-600">PDF dosyası seçin</span>
+                                <span className="text-gray-500"> veya buraya sürükleyin</span>
+                              </>
+                            )}
+                          </p>
+                          <p className="text-xs text-gray-500">PNG, JPG, PDF 10MB'a kadar</p>
+                        </div>
+                      </label>
+                    </div>
+                    {uploadError && (
+                      <p className="text-red-600 text-sm mt-2">{uploadError}</p>
+                    )}
+                  </div>
 
-              {/* Şirket Seçimi */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Şirket
-                </label>
-                <select
-                  value={companyId}
-                  onChange={(e) => setCompanyId(e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  required
-                >
-                  <option value="">Şirket seçin...</option>
-                  {companies.map(comp => (
-                    <option key={comp.id} value={comp.id}>
-                      {comp.name} - {comp.tax_number}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  {/* PDF Önizleme */}
+                  {preview && (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">PDF Önizleme</h4>
+                      <div className="bg-white border rounded-lg p-2 max-h-64 overflow-hidden">
+                        <iframe
+                          src={preview}
+                          className="w-full h-60"
+                          title="PDF Önizleme"
+                        />
+                      </div>
+                    </div>
+                  )}
 
-              {/* Yıl */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Yıl
-                </label>
-                <input
-                  type="number"
-                  value={year}
-                  onChange={(e) => setYear(parseInt(e.target.value))}
-                  min="2010"
-                  max="2030"
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-              </div>
+                  {/* PDF Analiz Durumu */}
+                  {pdfAnalysisLoading && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex items-center">
+                        <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-blue-600 mr-3"></div>
+                        <div>
+                          <h4 className="text-sm font-medium text-blue-800">PDF Analiz Ediliyor</h4>
+                          <p className="text-sm text-blue-600">Şirket bilgileri ve bilanço kalemleri otomatik tespit ediliyor...</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
-              {/* Dönem */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Dönem
-                </label>
-                <select
-                  value={period}
-                  onChange={(e) => setPeriod(e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  required
-                >
-                  <option value="YILLIK">Yıllık</option>
-                  <option value="Q1">1. Çeyrek</option>
-                  <option value="Q2">2. Çeyrek</option>
-                  <option value="Q3">3. Çeyrek</option>
-                  <option value="Q4">4. Çeyrek</option>
-                </select>
-              </div>
+                  {/* Otomatik Tespit Sonuçları */}
+                  {autoDetectedData && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <h4 className="text-sm font-medium text-green-800 mb-2">
+                        <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Otomatik Tespit Edildi
+                      </h4>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="font-medium text-green-700">Şirket:</span>
+                          <span className="text-green-600 ml-2">{autoDetectedData.company_name || 'Bulunamadı'}</span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-green-700">VKN:</span>
+                          <span className="text-green-600 ml-2">{autoDetectedData.tax_number || 'Bulunamadı'}</span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-green-700">Yıl:</span>
+                          <span className="text-green-600 ml-2">{autoDetectedData.year || 'Bulunamadı'}</span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-green-700">Dönem:</span>
+                          <span className="text-green-600 ml-2">{autoDetectedData.period || 'Bulunamadı'}</span>
+                        </div>
+                      </div>
+                      {autoDetectedData.items && (
+                        <div className="mt-2">
+                          <span className="font-medium text-green-700">Hesap Kalemleri:</span>
+                          <span className="text-green-600 ml-2">{autoDetectedData.items.length} adet kalem tespit edildi</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-              {/* Notlar */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Notlar (İsteğe bağlı)
-                </label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={3}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Bilanço hakkında notlar..."
-                />
-              </div>
+                  {/* İleri Butonu */}
+                  <div className="flex justify-end pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setPdfUploadStep(2)}
+                      disabled={!file || pdfAnalysisLoading}
+                      className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {pdfAnalysisLoading ? 'Analiz Ediliyor...' : 'İleri'}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                /* ADIM 2: Bilgileri Düzenle */
+                <>
+                  {/* Şirket Bilgileri */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Şirket
+                      </label>
+                      <select
+                        value={companyId}
+                        onChange={(e) => setCompanyId(e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        required
+                      >
+                        <option value="">Şirket seçin...</option>
+                        {companies.map(comp => (
+                          <option key={comp.id} value={comp.id}>
+                            {comp.name} - {comp.tax_number}
+                          </option>
+                        ))}
+                      </select>
+                      {autoDetectedCompany && (
+                        <p className="text-sm text-green-600 mt-1">
+                          ✓ PDF'den otomatik tespit edildi: {autoDetectedCompany.name}
+                        </p>
+                      )}
+                    </div>
 
-              {/* Modal Alt Butonlar */}
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={closeUploadModal}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                >
-                  İptal
-                </button>
-                <button
-                  type="submit"
-                  disabled={!file || !companyId || uploadLoading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {uploadLoading ? 'Yükleniyor...' : 'Analiz Et'}
-                </button>
-              </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Vergi Kimlik Numarası
+                      </label>
+                      <input
+                        type="text"
+                        value={taxNumber}
+                        onChange={(e) => setTaxNumber(e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="VKN girin..."
+                      />
+                      {taxNumberError && (
+                        <p className="text-red-600 text-sm mt-1">{taxNumberError}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Dönem Bilgileri */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Yıl
+                      </label>
+                      <input
+                        type="number"
+                        value={year}
+                        onChange={(e) => setYear(parseInt(e.target.value))}
+                        min="2010"
+                        max="2030"
+                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Dönem
+                      </label>
+                      <select
+                        value={period}
+                        onChange={(e) => setPeriod(e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        required
+                      >
+                        <option value="YILLIK">Yıllık</option>
+                        <option value="Q1">1. Çeyrek</option>
+                        <option value="Q2">2. Çeyrek</option>
+                        <option value="Q3">3. Çeyrek</option>
+                        <option value="Q4">4. Çeyrek</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Notlar */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Notlar (İsteğe bağlı)
+                    </label>
+                    <textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      rows={3}
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Bilanço hakkında notlar..."
+                    />
+                  </div>
+
+                  {/* Tespit Edilen Hesap Kalemleri Özeti */}
+                  {autoDetectedData && autoDetectedData.items && (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">
+                        Tespit Edilen Hesap Kalemleri ({autoDetectedData.items.length} adet)
+                      </h4>
+                      <div className="max-h-32 overflow-y-auto">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                          {autoDetectedData.items.slice(0, 8).map((item, index) => (
+                            <div key={index} className="flex justify-between bg-white p-2 rounded">
+                              <span className="font-medium">{item.account_code}</span>
+                              <span className="text-gray-600">{item.account_name}</span>
+                            </div>
+                          ))}
+                        </div>
+                        {autoDetectedData.items.length > 8 && (
+                          <p className="text-center text-gray-500 text-xs mt-2">
+                            +{autoDetectedData.items.length - 8} adet daha...
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Modal Alt Butonlar */}
+                  <div className="flex justify-between pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setPdfUploadStep(1)}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                    >
+                      Geri
+                    </button>
+                    <div className="flex space-x-3">
+                      <button
+                        type="button"
+                        onClick={closeUploadModal}
+                        className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                      >
+                        İptal
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={!file || !companyId || uploadLoading}
+                        className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {uploadLoading ? 'Analiz Ediliyor...' : 'Bilançoyu Kaydet'}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </form>
           </div>
         </div>
