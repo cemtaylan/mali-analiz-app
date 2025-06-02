@@ -308,14 +308,82 @@ const BalanceSheetEdit = () => {
   const formatAccountName = (name) => {
     if (!name || typeof name !== 'string') return name;
     
-    // Ana kategorileri kontrol et (A., B., C., D., E., F., G., H., I. gibi)
-    const isMainCategory = /^[A-Z]\.\s/.test(name);
-    if (isMainCategory) {
-      return name.toUpperCase(); // Ana kategoriler tamamen büyük
+    // Başlangıçta tüm string'i temizle
+    let cleanName = name.trim();
+    
+    // Başlangıçtaki nokta ve boşlukları temizle (". B. Menkul Kıymetler" -> "B. Menkul Kıymetler")
+    cleanName = cleanName.replace(/^\.+\s*/, '');
+    
+    // Roma rakamlarındaki İ harflerini I'ya çevir (tüm İ'leri)
+    cleanName = cleanName.replace(/İ/g, 'I');
+    
+    // Başta roma rakamı varsa düzelt (Iii. -> III.)
+    cleanName = cleanName.replace(/^(i+|ii|iii|iv|v|vi|vii|viii|ix|x|xi|xii|xiii|xiv|xv|xvi|xvii|xviii|xix|xx)\.\s*/gi, (match, roman) => {
+      return roman.toUpperCase() + '. ';
+    });
+    
+    // F ile başlayan hesapları kontrol et (F.Ödenecek Vergi...)
+    if (cleanName.startsWith('F.') || cleanName.startsWith('F ')) {
+      return cleanName.toUpperCase();
     }
     
-    // Diğerleri için Türkçe karakterleri destekleyen title case
-    return name.toLowerCase().replace(/(^|\s|[-.()])[a-züğıöşç]/g, (match) => {
+    // Ana kategorileri kontrol et (A., B., C., D., E., F., G., H., I. gibi)
+    const isMainCategory = /^[A-Z]\.\s/.test(cleanName);
+    if (isMainCategory) {
+      return cleanName.toUpperCase();
+    }
+    
+    // Alt kategorileri kontrol et (A.1, A.2, P.1, P.2 gibi)
+    const isSubCategory = /^[A-Z]\.\d+\s/.test(cleanName);
+    if (isSubCategory) {
+      return cleanName.toUpperCase();
+    }
+    
+    // 3. basamak hesapları kontrol et (A.1.1, A.1.2, P.1.1 gibi)
+    const is3rdLevel = /^[A-Z]\.\d+\.\d+\s/.test(cleanName);
+    if (is3rdLevel) {
+      return cleanName.toUpperCase();
+    }
+    
+    // 4. basamak ve daha alt hesapları kontrol et
+    const is4thLevelOrBelow = /^[A-Z]\.\d+\.\d+\.\d+/.test(cleanName);
+    if (is4thLevelOrBelow) {
+      return cleanName.toLowerCase().replace(/(^|\s|[-.()])[a-züğıöşçA-ZÜĞIÖŞÇıI]/g, (match) => {
+        return match.toUpperCase();
+      });
+    }
+    
+    // Roma rakamı ile başlayan hesap grupları (III. Kısa Vadeli...)
+    if (/^[IVX]+\.\s/i.test(cleanName)) {
+      return cleanName.toUpperCase();
+    }
+    
+    // Özel durumlar - tamamen büyük olması gerekenler (genişletilmiş liste)
+    const shouldBeUpperCase = [
+      'MADDİ DURAN VARLIKLAR',
+      'DÖNEN VARLIKLAR', 'DURAN VARLIKLAR', 
+      'KISA VADELİ YABANCI KAYNAKLAR', 'UZUN VADELİ YABANCI KAYNAKLAR', 
+      'ÖZ KAYNAKLAR', 'DÖNEM KARI',
+      'YILLARA YAYGIN', 'GELECEK AYLARA AİT', 'GELİR TAHAKKUKLARI',
+      'ÖDENECEK VERGİ', 'DİĞER YÜKÜMLÜLÜKLER', 'INŞAAT VE ONARIM',
+      'GIDERLER VE GELIR', 'ALINAN AVANSLAR', 'DİĞER UZUN VADELİ',
+      'GEÇMİŞ YILLAR ZARARLARI', 'DİĞER KISA VADELİ', 'GELECEKTEKI AYLARA AİT', 
+      'GİDER TAHAKKUKLARI', 'HAZIR DEĞERLER', 'MENKUL KIYMETLER',
+      'TİCARİ ALACAKLAR', 'STOKLAR', 'MALİ BORÇLAR', 'TİCARİ BORÇLAR',
+      'DİĞER ALACAKLAR', 'DİĞER BORÇLAR', 'ALINAN AVANSLAR',
+      'ÖDENECEK VERGİ VE FONLAR', 'ÖDENMİŞ SERMAYE', 'SERMAYE YEDEKLERİ',
+      'KARDAN AYRILAN KISITLANMIŞ YEDEKLER', 'NET DÖNEM KARI',
+      'KISA VADELİ', 'UZUN VADELİ', 'YABANCI KAYNAKLAR',
+      'VERGİ', 'YÜKÜMLÜLÜKLER', 'KAYNAKLAR'
+    ];
+    
+    const upperName = cleanName.toUpperCase();
+    if (shouldBeUpperCase.some(term => upperName.includes(term))) {
+      return upperName;
+    }
+    
+    // Diğerleri için title case
+    return cleanName.toLowerCase().replace(/(^|\s|[-.()])[a-züğıöşçA-ZÜĞIÖŞÇıI]/g, (match) => {
       return match.toUpperCase();
     });
   };
@@ -345,7 +413,8 @@ const BalanceSheetEdit = () => {
         if (item.id === editingItem.id) {
           const updatedItem = { ...item, is_edited: true };
           yearFields.forEach(year => {
-            updatedItem[year] = editingItem[`current_value_${year}`] || '';
+            const value = editingItem[`current_value_${year}`] || '';
+            updatedItem[year] = value;
           });
           return updatedItem;
         }
@@ -356,7 +425,12 @@ const BalanceSheetEdit = () => {
       setEditingItem(null);
       
       // Hiyerarşileri yeniden hesapla (üst seviye hesaplar otomatik güncellenecek)
-      console.log('🔄 Hiyerarşi yeniden hesaplanıyor...');
+      console.log('🔄 Hiyerarşi kalıcı kayıt sonrası yeniden hesaplanıyor...');
+      
+      // buildHierarchies'i manuel olarak çağır
+      setTimeout(() => {
+        buildHierarchies();
+      }, 100);
       
       // Başarı mesajı göster
       setSuccessMessage(`${editingItem.definition} hesabı başarıyla güncellendi - Üst seviye hesaplar otomatik hesaplandı`);
@@ -489,13 +563,13 @@ const BalanceSheetEdit = () => {
     const primaryYear = yearFields[0] || '2020'; // İlk yılı kullan
     console.log('📊 Toplam hesaplama için yıl alanları:', yearFields, '- Primary year:', primaryYear);
 
-    // Hiyerarşiden ana kategori toplamlarını hesapla
-    const calculateTotalFromHierarchy = (hierarchy) => {
+    // Hiyerarşiden ana kategori toplamlarını hesapla - TÜM YILLAR İÇİN
+    const calculateTotalFromHierarchy = (hierarchy, year) => {
       let total = 0;
       
       hierarchy.forEach(mainCategory => {
         // Ana kategori seviyesindeki değerleri topla
-        const valueStr = mainCategory[primaryYear] || '0';
+        const valueStr = mainCategory[year] || '0';
         if (valueStr !== '-') {
           let cleanValue;
           if (typeof valueStr === 'string' && valueStr.includes('.') && valueStr.includes(',')) {
@@ -512,28 +586,39 @@ const BalanceSheetEdit = () => {
       return total;
     };
 
-    // Aktif ve pasif toplamları hesapla
-    const aktifTotal = calculateTotalFromHierarchy(activeHierarchy);
-    const pasifTotal = calculateTotalFromHierarchy(passiveHierarchy);
-
-    const difference = Math.abs(aktifTotal - pasifTotal);
-    const balanced = difference < 100; // 100 TL'den küçük fark tolere edilir
+    // TÜM YILLAR İÇİN toplamları hesapla
+    const allYearTotals = {};
     
-    console.log('📊 Dinamik toplamlar güncellendi:', { 
-      aktifTotal: formatCurrency(aktifTotal),
-      pasifTotal: formatCurrency(pasifTotal), 
-      difference: formatCurrency(difference),
-      balanced 
+    yearFields.forEach(year => {
+      const aktifTotal = calculateTotalFromHierarchy(activeHierarchy, year);
+      const pasifTotal = calculateTotalFromHierarchy(passiveHierarchy, year);
+      
+      allYearTotals[year] = {
+        aktif: aktifTotal,
+        pasif: pasifTotal,
+        difference: Math.abs(aktifTotal - pasifTotal),
+        balanced: Math.abs(aktifTotal - pasifTotal) < 100
+      };
     });
 
-    setAktifToplam(aktifTotal);
-    setPasifToplam(pasifTotal);
-    setIsBalanced(balanced);
+    // Primary year için ana state'leri güncelle
+    const primaryTotals = allYearTotals[primaryYear];
+    if (primaryTotals) {
+      setAktifToplam(primaryTotals.aktif);
+      setPasifToplam(primaryTotals.pasif);
+      setIsBalanced(primaryTotals.balanced);
+    }
+    
+    console.log('📊 TÜM YILLAR için dinamik toplamlar:', allYearTotals);
 
     // Eğer dengeli değilse kullanıcıyı uyar
-    if (!balanced && error === null) {
-      console.warn(`⚠️ Bilanço dengeli değil! Fark: ${formatCurrency(difference)}`);
+    const anyUnbalanced = Object.values(allYearTotals).some(total => !total.balanced);
+    if (anyUnbalanced && error === null) {
+      console.warn(`⚠️ Bir veya daha fazla yılda bilanço dengeli değil!`);
     }
+    
+    // Tüm yıl toplamlarını global state'e kaydet (opsiyonel - UI'da göstermek için)
+    window.allYearTotals = allYearTotals;
   };
 
   // Formatlanmış para değeri döndür
@@ -606,9 +691,31 @@ const BalanceSheetEdit = () => {
   // Değer değişikliklerini izle ve real-time güncelle
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    
+    // Sadece sayı ve virgül/nokta karakterleri kabul et
+    let cleanValue = value.replace(/[^\d,.-]/g, '');
+    
+    // Türkçe format uygula (real-time)
+    const formatValue = (val) => {
+      if (!val || val === '' || val === '-') return val;
+      
+      // Virgülden önceki ve sonraki kısmı ayır
+      const parts = val.split(',');
+      const integerPart = parts[0].replace(/\./g, ''); // Noktaları temizle
+      const decimalPart = parts[1];
+      
+      // Binlik ayracı ekle
+      const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      
+      // Decimal varsa ekle
+      return decimalPart !== undefined ? `${formattedInteger},${decimalPart}` : formattedInteger;
+    };
+    
+    const formattedValue = formatValue(cleanValue);
+    
     const updatedEditingItem = {
       ...editingItem,
-      [name]: value
+      [name]: formattedValue
     };
     setEditingItem(updatedEditingItem);
 
@@ -622,21 +729,21 @@ const BalanceSheetEdit = () => {
     };
     
     const yearFields = getYearFields();
-    const primaryYear = yearFields[0] || '2020';
+    const currentYear = name.replace('current_value_', '');
 
     // Real-time preview için geçici items güncellemesi
     const tempItems = items.map(item => {
       if (item.id === editingItem.id) {
         return {
           ...item,
-          [name === `current_value_${primaryYear}` ? primaryYear : name.replace('current_value_', '')]: value,
+          [currentYear]: formattedValue,
           is_edited: true
         };
       }
       return item;
     });
 
-    // Geçici hiyerarşi hesaplama ve toplam güncelleme
+    // Hiyerarşileri gerçek zamanlı güncelle
     setTimeout(() => {
       const activeItems = tempItems.filter(item => {
         const definition = item.definition || '';
@@ -648,45 +755,151 @@ const BalanceSheetEdit = () => {
         return definition.startsWith('P.');
       });
 
-      // Basit toplam hesaplama (sadece preview için)
-      const activeTotal = activeItems
-        .filter(item => item.definition && /^A\.\d+$/.test(item.definition))
-        .reduce((sum, item) => {
-          const valueStr = item[primaryYear] || '0';
-          if (valueStr === '-') return sum;
-          
-          let cleanValue;
-          if (typeof valueStr === 'string' && valueStr.includes('.') && valueStr.includes(',')) {
-            cleanValue = valueStr.replace(/\./g, '').replace(',', '.');
+      // Hiyerarşileri yeniden oluştur ve hesapla
+      const buildTempHierarchy = (items) => {
+        const hierarchy = [];
+        const itemMap = {};
+        
+        items.forEach(item => {
+          const parts = (item.definition || '').split('.');
+          const level = parts.length;
+          item.level = level;
+          item.id = item.definition || Math.random().toString();
+          itemMap[item.id] = { ...item, children: [] };
+        });
+
+        items.forEach(item => {
+          const parts = (item.definition || '').split('.');
+          if (parts.length > 1) {
+            const parentCode = parts.slice(0, -1).join('.');
+            const parent = itemMap[parentCode];
+            if (parent && itemMap[item.id]) {
+              parent.children.push(itemMap[item.id]);
+            } else {
+              hierarchy.push(itemMap[item.id]);
+            }
           } else {
-            cleanValue = String(valueStr);
+            hierarchy.push(itemMap[item.id]);
           }
-          
-          return sum + (parseFloat(cleanValue) || 0);
-        }, 0);
+        });
 
-      const passiveTotal = passiveItems
-        .filter(item => item.definition && /^P\.\d+$/.test(item.definition))
-        .reduce((sum, item) => {
-          const valueStr = item[primaryYear] || '0';
-          if (valueStr === '-') return sum;
-          
-          let cleanValue;
-          if (typeof valueStr === 'string' && valueStr.includes('.') && valueStr.includes(',')) {
-            cleanValue = valueStr.replace(/\./g, '').replace(',', '.');
-          } else {
-            cleanValue = String(valueStr);
+        // Otomatik hesaplamayı yap
+        const calculateTempTotals = (nodes) => {
+          nodes.forEach(node => {
+            if (node.children && node.children.length > 0) {
+              // Önce çocukları hesapla
+              calculateTempTotals(node.children);
+              
+              // Sonra bu node'un toplamını hesapla
+              yearFields.forEach(year => {
+                let total = 0;
+                let hasValidChildren = false;
+                
+                node.children.forEach(child => {
+                  const childValue = child[year];
+                  if (childValue && childValue !== '-') {
+                    let numericValue = 0;
+                    if (typeof childValue === 'string' && childValue.includes('.') && childValue.includes(',')) {
+                      numericValue = parseFloat(childValue.replace(/\./g, '').replace(',', '.'));
+                    } else {
+                      numericValue = parseFloat(childValue);
+                    }
+                    
+                    if (!isNaN(numericValue)) {
+                      total += numericValue;
+                      hasValidChildren = true;
+                    }
+                  }
+                });
+                
+                // Eğer çocuklardan geçerli değer varsa, toplamı güncelle
+                if (hasValidChildren) {
+                  node[year] = total.toLocaleString('tr-TR', { 
+                    minimumFractionDigits: 2, 
+                    maximumFractionDigits: 2 
+                  });
+                  node.isCalculated = true; // Bu değerin otomatik hesaplandığını işaretle
+                }
+              });
+            }
+          });
+        };
+
+        calculateTempTotals(hierarchy);
+        return hierarchy;
+      };
+
+      const tempActiveHierarchy = buildTempHierarchy(activeItems);
+      const tempPassiveHierarchy = buildTempHierarchy(passiveItems);
+
+      // State'leri güncelle
+      setActiveHierarchy(tempActiveHierarchy);
+      setPassiveHierarchy(tempPassiveHierarchy);
+
+      // Toplam hesaplama - TÜM YILLAR İÇİN
+      const calculateTotalFromHierarchy = (hierarchy, year) => {
+        let total = 0;
+        
+        hierarchy.forEach(mainCategory => {
+          const valueStr = mainCategory[year] || '0';
+          if (valueStr !== '-') {
+            let cleanValue;
+            if (typeof valueStr === 'string' && valueStr.includes('.') && valueStr.includes(',')) {
+              cleanValue = valueStr.replace(/\./g, '').replace(',', '.');
+            } else {
+              cleanValue = String(valueStr);
+            }
+            
+            const amount = parseFloat(cleanValue) || 0;
+            total += amount;
           }
-          
-          return sum + (parseFloat(cleanValue) || 0);
-        }, 0);
+        });
+        
+        return total;
+      };
 
-      const difference = Math.abs(activeTotal - passiveTotal);
-      const balanced = difference < 100;
+      // TÜM YILLAR için real-time toplam hesaplama
+      const allYearTotals = {};
+      
+      yearFields.forEach(year => {
+        const activeTotal = calculateTotalFromHierarchy(tempActiveHierarchy, year);
+        const passiveTotal = calculateTotalFromHierarchy(tempPassiveHierarchy, year);
+        
+        allYearTotals[year] = {
+          aktif: activeTotal,
+          pasif: passiveTotal,
+          difference: Math.abs(activeTotal - passiveTotal),
+          balanced: Math.abs(activeTotal - passiveTotal) < 100
+        };
+      });
 
-      setAktifToplam(activeTotal);
-      setPasifToplam(passiveTotal);
-      setIsBalanced(balanced);
+      // Primary year için ana state'leri güncelle
+      const primaryYear = yearFields[0] || '2020';
+      const primaryTotals = allYearTotals[primaryYear];
+      
+      if (primaryTotals) {
+        setAktifToplam(primaryTotals.aktif);
+        setPasifToplam(primaryTotals.pasif);
+        setIsBalanced(primaryTotals.balanced);
+      }
+      
+      console.log('🔄 Real-time TÜM YILLAR güncelleme:', {
+        changedYear: currentYear,
+        newValue: formattedValue,
+        allYearTotals: Object.fromEntries(
+          Object.entries(allYearTotals).map(([year, data]) => [
+            year, 
+            {
+              aktif: data.aktif.toLocaleString('tr-TR'),
+              pasif: data.pasif.toLocaleString('tr-TR'),
+              balanced: data.balanced
+            }
+          ])
+        )
+      });
+      
+      // Global state'e kaydet
+      window.allYearTotals = allYearTotals;
     }, 100);
   };
   
@@ -808,13 +1021,8 @@ const BalanceSheetEdit = () => {
       
       const isMainHeading = /^[IVX]+\./.test(item.description || '');
       
-      // 3 basamaklı kategori kontrolü (A.1.1, P.2.3 formatı)
-      const isLevel2Category = /^[AP]\.\d+\.\d+$/.test(item.definition || '');
-      
       const displayDescription = isMainHeading ? 
         (item.description || 'Açıklama yok').toUpperCase() : 
-        isLevel2Category ?
-        (item.description || 'Açıklama yok').toUpperCase() :
         formatAccountName(item.description || 'Açıklama yok');
 
       // Otomatik hesaplanan değerleri göster
@@ -831,6 +1039,7 @@ const BalanceSheetEdit = () => {
               name={`current_value_${year}`}
               value={editingItem[`current_value_${year}`] || ''}
               onChange={handleInputChange}
+              onFocus={(e) => e.target.select()}
               className="w-full p-1 border border-gray-300 rounded text-right"
               placeholder="0,00"
             />
@@ -1177,26 +1386,72 @@ const BalanceSheetEdit = () => {
         
         <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-t border-gray-200">
           <div className="flex justify-between items-center">
-            <div className="space-y-2">
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                  <span className="text-sm text-gray-600">Aktif Toplam:</span>
-                  <span className={`font-bold text-lg ${isBalanced ? 'text-blue-600' : 'text-red-600'}`}>
-                    {formatCurrency(aktifToplam)}
-                  </span>
-                </div>
-                <div className="h-6 w-px bg-gray-300"></div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
-                  <span className="text-sm text-gray-600">Pasif Toplam:</span>
-                  <span className={`font-bold text-lg ${isBalanced ? 'text-indigo-600' : 'text-red-600'}`}>
-                    {formatCurrency(pasifToplam)}
-                  </span>
-                </div>
-              </div>
+            <div className="space-y-3">
+              {/* Tüm yıllar için toplam gösterimi */}
+              {(() => {
+                const getYearFields = () => {
+                  if (items && items.length > 0) {
+                    const sampleItem = items[0];
+                    return Object.keys(sampleItem).filter(key => /^\d{4}(_E)?$/.test(key));
+                  }
+                  return ['2020', '2021']; // fallback
+                };
+                
+                const yearFields = getYearFields();
+                const allYearTotals = window.allYearTotals || {};
+                
+                return yearFields.map(year => {
+                  const yearData = allYearTotals[year];
+                  const aktifTotal = yearData?.aktif || 0;
+                  const pasifTotal = yearData?.pasif || 0;
+                  const isYearBalanced = yearData?.balanced || false;
+                  
+                  return (
+                    <div key={year} className="flex items-center space-x-4 py-1">
+                      <div className="text-xs font-medium text-gray-700 bg-gray-200 px-2 py-1 rounded min-w-[60px] text-center">
+                        {year}
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        <span className="text-xs text-gray-600">Aktif:</span>
+                        <span className={`font-bold text-sm ${isYearBalanced ? 'text-blue-600' : 'text-red-600'}`}>
+                          {formatCurrency(aktifTotal)}
+                        </span>
+                      </div>
+                      <div className="h-4 w-px bg-gray-300"></div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                        <span className="text-xs text-gray-600">Pasif:</span>
+                        <span className={`font-bold text-sm ${isYearBalanced ? 'text-indigo-600' : 'text-red-600'}`}>
+                          {formatCurrency(pasifTotal)}
+                        </span>
+                      </div>
+                      <div className="h-4 w-px bg-gray-300"></div>
+                      <div className="flex items-center space-x-1">
+                        {isYearBalanced ? (
+                          <div className="w-3 h-3 bg-green-100 rounded-full flex items-center justify-center">
+                            <svg className="w-2 h-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                        ) : (
+                          <div className="w-3 h-3 bg-red-100 rounded-full flex items-center justify-center">
+                            <svg className="w-2 h-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01" />
+                            </svg>
+                          </div>
+                        )}
+                        <span className={`text-xs font-medium ${isYearBalanced ? 'text-green-600' : 'text-red-600'}`}>
+                          Fark: {formatCurrency(Math.abs(aktifTotal - pasifTotal))}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
               
-              <div className="flex items-center space-x-2">
+              {/* Genel durum */}
+              <div className="flex items-center space-x-2 pt-2 border-t border-gray-300">
                 {isBalanced ? (
                   <>
                     <div className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center">
@@ -1205,7 +1460,7 @@ const BalanceSheetEdit = () => {
                       </svg>
                     </div>
                     <span className="text-sm font-medium text-green-600">
-                      Bilanço dengeli (fark &lt; 100 ₺)
+                      Bilanço dengeli (primary year)
                     </span>
                   </>
                 ) : (
@@ -1216,29 +1471,16 @@ const BalanceSheetEdit = () => {
                       </svg>
                     </div>
                     <span className="text-sm font-medium text-red-600">
-                      Bilanço dengeli değil! Lütfen kontrol ediniz.
+                      Bilanço kontrol gerekiyor!
                     </span>
                   </>
                 )}
               </div>
-              
-              {!isBalanced && (
-                <div className="flex items-center space-x-2 mt-1">
-                  <div className="w-4 h-4 bg-amber-100 rounded-full flex items-center justify-center">
-                    <svg className="w-2.5 h-2.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <span className="text-xs text-amber-700">
-                    Ana kategoriler arasındaki fark çok büyük. Lütfen hesap değerlerini kontrol edin.
-                  </span>
-                      </div>
-                    )}
             </div>
             
             <div className="text-right space-y-2">
               <div className="flex flex-col items-end">
-                <span className="text-xs text-gray-500 mb-1">Toplam Fark</span>
+                <span className="text-xs text-gray-500 mb-1">Primary Year Fark</span>
                 <div className="flex items-center space-x-2">
                   <span className={`font-bold text-xl ${isBalanced ? 'text-green-600' : 'text-red-600'}`}>
                     {formatCurrency(Math.abs(aktifToplam - pasifToplam))}
@@ -1265,17 +1507,6 @@ const BalanceSheetEdit = () => {
                   Düzenlenen: {items.filter(item => item.is_edited).length} kalem
                 </span>
               </div>
-              
-              {!isBalanced && (
-                <div className="mt-2">
-                  <div className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-red-100 text-red-800 border border-red-200">
-                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                          </svg>
-                    Kaydetme engellendi
-                  </div>
-                      </div>
-              )}
             </div>
           </div>
         </div>

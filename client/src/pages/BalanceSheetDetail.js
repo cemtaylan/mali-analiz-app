@@ -233,14 +233,82 @@ const BalanceSheetDetail = () => {
   const formatAccountName = (name) => {
     if (!name || typeof name !== 'string') return name;
     
-    // Ana kategorileri kontrol et (A., B., C., D., E., F., G., H., I. gibi)
-    const isMainCategory = /^[A-Z]\.\s/.test(name);
-    if (isMainCategory) {
-      return name.toUpperCase(); // Ana kategoriler tamamen büyük
+    // Başlangıçta tüm string'i temizle
+    let cleanName = name.trim();
+    
+    // Başlangıçtaki nokta ve boşlukları temizle (". B. Menkul Kıymetler" -> "B. Menkul Kıymetler")
+    cleanName = cleanName.replace(/^\.+\s*/, '');
+    
+    // Roma rakamlarındaki İ harflerini I'ya çevir (tüm İ'leri)
+    cleanName = cleanName.replace(/İ/g, 'I');
+    
+    // Başta roma rakamı varsa düzelt (Iii. -> III.)
+    cleanName = cleanName.replace(/^(i+|ii|iii|iv|v|vi|vii|viii|ix|x|xi|xii|xiii|xiv|xv|xvi|xvii|xviii|xix|xx)\.\s*/gi, (match, roman) => {
+      return roman.toUpperCase() + '. ';
+    });
+    
+    // F ile başlayan hesapları kontrol et (F.Ödenecek Vergi...)
+    if (cleanName.startsWith('F.') || cleanName.startsWith('F ')) {
+      return cleanName.toUpperCase();
     }
     
-    // Diğerleri için Türkçe karakterleri destekleyen title case
-    return name.toLowerCase().replace(/(^|\s|[-.()])[a-züğıöşç]/g, (match) => {
+    // Ana kategorileri kontrol et (A., B., C., D., E., F., G., H., I. gibi)
+    const isMainCategory = /^[A-Z]\.\s/.test(cleanName);
+    if (isMainCategory) {
+      return cleanName.toUpperCase();
+    }
+    
+    // Alt kategorileri kontrol et (A.1, A.2, P.1, P.2 gibi)
+    const isSubCategory = /^[A-Z]\.\d+\s/.test(cleanName);
+    if (isSubCategory) {
+      return cleanName.toUpperCase();
+    }
+    
+    // 3. basamak hesapları kontrol et (A.1.1, A.1.2, P.1.1 gibi)
+    const is3rdLevel = /^[A-Z]\.\d+\.\d+\s/.test(cleanName);
+    if (is3rdLevel) {
+      return cleanName.toUpperCase();
+    }
+    
+    // 4. basamak ve daha alt hesapları kontrol et
+    const is4thLevelOrBelow = /^[A-Z]\.\d+\.\d+\.\d+/.test(cleanName);
+    if (is4thLevelOrBelow) {
+      return cleanName.toLowerCase().replace(/(^|\s|[-.()])[a-züğıöşçA-ZÜĞIÖŞÇıI]/g, (match) => {
+        return match.toUpperCase();
+      });
+    }
+    
+    // Roma rakamı ile başlayan hesap grupları (III. Kısa Vadeli...)
+    if (/^[IVX]+\.\s/i.test(cleanName)) {
+      return cleanName.toUpperCase();
+    }
+    
+    // Özel durumlar - tamamen büyük olması gerekenler (genişletilmiş liste)
+    const shouldBeUpperCase = [
+      'MADDİ DURAN VARLIKLAR',
+      'DÖNEN VARLIKLAR', 'DURAN VARLIKLAR', 
+      'KISA VADELİ YABANCI KAYNAKLAR', 'UZUN VADELİ YABANCI KAYNAKLAR', 
+      'ÖZ KAYNAKLAR', 'DÖNEM KARI',
+      'YILLARA YAYGIN', 'GELECEK AYLARA AİT', 'GELİR TAHAKKUKLARI',
+      'ÖDENECEK VERGİ', 'DİĞER YÜKÜMLÜLÜKLER', 'INŞAAT VE ONARIM',
+      'GIDERLER VE GELIR', 'ALINAN AVANSLAR', 'DİĞER UZUN VADELİ',
+      'GEÇMİŞ YILLAR ZARARLARI', 'DİĞER KISA VADELİ', 'GELECEKTEKI AYLARA AİT', 
+      'GİDER TAHAKKUKLARI', 'HAZIR DEĞERLER', 'MENKUL KIYMETLER',
+      'TİCARİ ALACAKLAR', 'STOKLAR', 'MALİ BORÇLAR', 'TİCARİ BORÇLAR',
+      'DİĞER ALACAKLAR', 'DİĞER BORÇLAR', 'ALINAN AVANSLAR',
+      'ÖDENECEK VERGİ VE FONLAR', 'ÖDENMİŞ SERMAYE', 'SERMAYE YEDEKLERİ',
+      'KARDAN AYRILAN KISITLANMIŞ YEDEKLER', 'NET DÖNEM KARI',
+      'KISA VADELİ', 'UZUN VADELİ', 'YABANCI KAYNAKLAR',
+      'VERGİ', 'YÜKÜMLÜLÜKLER', 'KAYNAKLAR'
+    ];
+    
+    const upperName = cleanName.toUpperCase();
+    if (shouldBeUpperCase.some(term => upperName.includes(term))) {
+      return upperName;
+    }
+    
+    // Diğerleri için title case
+    return cleanName.toLowerCase().replace(/(^|\s|[-.()])[a-züğıöşçA-ZÜĞIÖŞÇıI]/g, (match) => {
       return match.toUpperCase();
     });
   };
@@ -419,28 +487,42 @@ const BalanceSheetDetail = () => {
           className={`${bgColor} hover:bg-gray-100 transition-colors duration-150 ${hasChildren ? 'cursor-pointer' : ''}`}
           onClick={() => hasChildren && toggleItem(item.id)}
         >
-          <td className="px-6 py-3 whitespace-nowrap border-r border-gray-200 w-1/6">
+          <td className="px-6 py-3 whitespace-nowrap border-r border-gray-200 w-32">
             <div className="flex items-center">
+              {/* Hiyerarşi indentasyonu */}
+              {depth > 0 && (
+                <div className="flex items-center mr-1">
+                  {Array.from({ length: depth }).map((_, i) => (
+                    <div key={i} className="w-3 flex-shrink-0">
+                      {i === depth - 1 ? (
+                        <div className="w-2 h-2 border-l border-b border-gray-400 ml-1"></div>
+                      ) : (
+                        <div className="w-px h-6 bg-gray-300 ml-1"></div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
               {hasChildren && (
-                <span className="mr-2 text-gray-500 w-4 flex-shrink-0">
+                <span className="mr-2 text-gray-500 w-4 flex-shrink-0 text-center">
                   {isExpanded ? '−' : '+'}
                 </span>
               )}
-              <span className={`${textSize} text-gray-900 ${fontWeight}`}>
+              <span className={`${textSize} text-gray-900 ${fontWeight} ${depth > 0 ? 'text-blue-700' : ''}`}>
                 {item.definition || '-'}
               </span>
             </div>
           </td>
           <td className={`px-6 py-3 ${paddingClass}`}>
             <div className="flex items-center">
-              <div className={`w-3 h-3 rounded-full mr-3 ${statusColor}`}></div>
+              <div className={`w-3 h-3 rounded-full mr-3 flex-shrink-0 ${statusColor}`}></div>
               <div className={`${textSize} text-gray-900 ${fontWeight} ${isMainHeading ? 'uppercase' : ''}`}>
                 {displayDescription}
               </div>
             </div>
           </td>
           {Object.keys(item).filter(key => /^\d{4}(_E)?$/.test(key)).map(year => (
-            <td key={year} className="px-6 py-3 whitespace-nowrap text-right w-1/6">
+            <td key={year} className="px-6 py-3 whitespace-nowrap text-right w-40">
               <div className={`${textSize} text-gray-900 font-mono ${fontWeight}`}>
                 {item[year] || '-'}
               </div>
@@ -670,17 +752,17 @@ const BalanceSheetDetail = () => {
           </div>
         ) : (
           <div className="overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-gray-200 table-fixed">
               <thead className={`text-white ${activeTab === 'active' ? 'bg-blue-600' : 'bg-indigo-600'}`}>
                 <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6">
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-32">
                     Hesap Kodu
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                     Hesap Adı
                   </th>
                   {items.length > 0 && Object.keys(items[0]).filter(key => /^\d{4}(_E)?$/.test(key)).map(year => (
-                    <th key={year} scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider w-1/6">
+                    <th key={year} scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider w-40">
                       {year}
                     </th>
                   ))}
@@ -711,48 +793,48 @@ const BalanceSheetDetail = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {items.length > 0 && Object.keys(items[0]).filter(key => /^\d{4}(_E)?$/.test(key)).map(year => (
-            <div key={year} className="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-xl p-6">
+            <div key={year} className="bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-xl p-6">
               <div className="flex items-center mb-4">
-                <div className={`w-4 h-4 rounded-full mr-3 ${year === '2021' ? 'bg-blue-500' : 'bg-gray-500'}`}></div>
-                <h3 className="text-2xl font-bold text-gray-900">{year}</h3>
+                <div className="w-4 h-4 bg-gray-600 rounded-full mr-3"></div>
+                <h3 className="text-xl font-bold text-gray-900">{year}</h3>
               </div>
               
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center py-2">
                   <span className="text-blue-900 font-medium">Toplam Aktif:</span>
-                  <span className="text-lg font-bold text-blue-900 font-mono">
+                  <span className="text-lg font-bold text-blue-900">
                     {formatCurrency(calculatedTotals[year]?.aktif || 0)}
                   </span>
                 </div>
                 
-                <div className="flex justify-between items-center">
-                  <span className="text-indigo-900 font-medium">Toplam Pasif:</span>
-                  <span className="text-lg font-bold text-indigo-900 font-mono">
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-blue-900 font-medium">Toplam Pasif:</span>
+                  <span className="text-lg font-bold text-blue-900">
                     {formatCurrency(calculatedTotals[year]?.pasif || 0)}
                   </span>
                 </div>
                 
                 <hr className="border-gray-300" />
                 
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center py-2">
                   <span className="text-gray-700 font-medium">Fark:</span>
-                  <span className={`text-lg font-bold font-mono ${
-                    calculatedTotals[year]?.dengeli ? 'text-green-600' : 'text-red-600'
+                  <span className={`text-lg font-bold ${
+                    Math.abs(calculatedTotals[year]?.fark || 0) < 0.01 ? 'text-green-600' : 'text-red-600'
                   }`}>
                     {formatCurrency(Math.abs(calculatedTotals[year]?.fark || 0))}
                   </span>
                 </div>
                 
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center py-2">
                   <span className="text-gray-700 font-medium">Durum:</span>
-                  <span className={`text-sm font-semibold px-2 py-1 rounded-full ${
-                    calculatedTotals[year]?.dengeli 
+                  <span className={`text-sm font-semibold px-3 py-1 rounded-full ${
+                    Math.abs(calculatedTotals[year]?.fark || 0) < 0.01
                       ? 'bg-green-100 text-green-800' 
                       : 'bg-red-100 text-red-800'
                   }`}>
-                    {calculatedTotals[year]?.dengeli ? '✓ Dengeli' : '⚠ Dengeli Değil'}
+                    {Math.abs(calculatedTotals[year]?.fark || 0) < 0.01 ? '✓ Dengeli' : '⚠ Dengeli Değil'}
                   </span>
                 </div>
               </div>

@@ -197,7 +197,7 @@ const BalanceSheetPreview = () => {
             let processedData = parsedData;
             if (parsedData.detected_data && parsedData.detected_data.items) {
               // Doğru format - doğrudan kullan
-              setAnalyzedData(parsedData);
+            setAnalyzedData(parsedData);
             
             // Önizleme verisi hazırla
             const previewResponse = await BalanceSheetAPI.prepareBalanceSheetPreview(parsedData);
@@ -205,8 +205,8 @@ const BalanceSheetPreview = () => {
             if (previewResponse.success) {
               setPreviewData(previewResponse.preview_data);
                 console.log('✅ Önizleme verisi hazırlandı:', previewResponse.preview_data);
-              } else {
-                throw new Error(previewResponse.error);
+            } else {
+              throw new Error(previewResponse.error);
               }
             } else if (parsedData.items) {
               // Eski format - güncelle
@@ -416,8 +416,8 @@ const BalanceSheetPreview = () => {
       if (!window.confirm(confirmMessage)) {
         console.log('❌ Kullanıcı kaydetme işlemini iptal etti');
         setSaving(false);
-        return;
-      }
+      return;
+    }
 
       console.log('🌐 API çağrısı yapılıyor...');
       const saveResponse = await BalanceSheetAPI.saveBalanceSheetFromPreview(processedData);
@@ -482,7 +482,7 @@ const BalanceSheetPreview = () => {
       const definition = item.definition || item.account_code || '';
       if (type === 'active') {
         return (definition.startsWith('A.') || (definition === 'eşleşmedi' && item.description?.includes('AKTİF')));
-      } else {
+    } else {
         return (definition.startsWith('P.') || (definition === 'eşleşmedi' && item.description?.includes('PASİF')));
       }
     });
@@ -623,22 +623,94 @@ const BalanceSheetPreview = () => {
 
   // Hesap adını formatla  
   const formatAccountName = (name) => {
-    if (!name) return 'Belirtilmemiş';
+    if (!name || typeof name !== 'string') return name;
     
-    // Her kelimenin baş harfini büyük yap (Title Case)
-    return name
-      .toLowerCase()
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
+    // Başlangıçta tüm string'i temizle
+    let cleanName = name.trim();
+    
+    // Başlangıçtaki nokta ve boşlukları temizle (". B. Menkul Kıymetler" -> "B. Menkul Kıymetler")
+    cleanName = cleanName.replace(/^\.+\s*/, '');
+    
+    // Roma rakamlarındaki İ harflerini I'ya çevir (tüm İ'leri)
+    cleanName = cleanName.replace(/İ/g, 'I');
+    
+    // Başta roma rakamı varsa düzelt (Iii. -> III.)
+    cleanName = cleanName.replace(/^(i+|ii|iii|iv|v|vi|vii|viii|ix|x|xi|xii|xiii|xiv|xv|xvi|xvii|xviii|xix|xx)\.\s*/gi, (match, roman) => {
+      return roman.toUpperCase() + '. ';
+    });
+    
+    // F ile başlayan hesapları kontrol et (F.Ödenecek Vergi...)
+    if (cleanName.startsWith('F.') || cleanName.startsWith('F ')) {
+      return cleanName.toUpperCase();
+    }
+    
+    // Ana kategorileri kontrol et (A., B., C., D., E., F., G., H., I. gibi)
+    const isMainCategory = /^[A-Z]\.\s/.test(cleanName);
+    if (isMainCategory) {
+      return cleanName.toUpperCase();
+    }
+    
+    // Alt kategorileri kontrol et (A.1, A.2, P.1, P.2 gibi)
+    const isSubCategory = /^[A-Z]\.\d+\s/.test(cleanName);
+    if (isSubCategory) {
+      return cleanName.toUpperCase();
+    }
+    
+    // 3. basamak hesapları kontrol et (A.1.1, A.1.2, P.1.1 gibi)
+    const is3rdLevel = /^[A-Z]\.\d+\.\d+\s/.test(cleanName);
+    if (is3rdLevel) {
+      return cleanName.toUpperCase();
+    }
+    
+    // 4. basamak ve daha alt hesapları kontrol et
+    const is4thLevelOrBelow = /^[A-Z]\.\d+\.\d+\.\d+/.test(cleanName);
+    if (is4thLevelOrBelow) {
+      return cleanName.toLowerCase().replace(/(^|\s|[-.()])[a-züğıöşçA-ZÜĞIÖŞÇıI]/g, (match) => {
+        return match.toUpperCase();
+      });
+    }
+    
+    // Roma rakamı ile başlayan hesap grupları (III. Kısa Vadeli...)
+    if (/^[IVX]+\.\s/i.test(cleanName)) {
+      return cleanName.toUpperCase();
+    }
+    
+    // Özel durumlar - tamamen büyük olması gerekenler (genişletilmiş liste)
+    const shouldBeUpperCase = [
+      'MADDİ DURAN VARLIKLAR',
+      'DÖNEN VARLIKLAR', 'DURAN VARLIKLAR', 
+      'KISA VADELİ YABANCI KAYNAKLAR', 'UZUN VADELİ YABANCI KAYNAKLAR', 
+      'ÖZ KAYNAKLAR', 'DÖNEM KARI',
+      'YILLARA YAYGIN', 'GELECEK AYLARA AİT', 'GELİR TAHAKKUKLARI',
+      'ÖDENECEK VERGİ', 'DİĞER YÜKÜMLÜLÜKLER', 'INŞAAT VE ONARIM',
+      'GIDERLER VE GELIR', 'ALINAN AVANSLAR', 'DİĞER UZUN VADELİ',
+      'GEÇMİŞ YILLAR ZARARLARI', 'DİĞER KISA VADELİ', 'GELECEKTEKI AYLARA AİT', 
+      'GİDER TAHAKKUKLARI', 'HAZIR DEĞERLER', 'MENKUL KIYMETLER',
+      'TİCARİ ALACAKLAR', 'STOKLAR', 'MALİ BORÇLAR', 'TİCARİ BORÇLAR',
+      'DİĞER ALACAKLAR', 'DİĞER BORÇLAR', 'ALINAN AVANSLAR',
+      'ÖDENECEK VERGİ VE FONLAR', 'ÖDENMİŞ SERMAYE', 'SERMAYE YEDEKLERİ',
+      'KARDAN AYRILAN KISITLANMIŞ YEDEKLER', 'NET DÖNEM KARI',
+      'KISA VADELİ', 'UZUN VADELİ', 'YABANCI KAYNAKLAR',
+      'VERGİ', 'YÜKÜMLÜLÜKLER', 'KAYNAKLAR'
+    ];
+    
+    const upperName = cleanName.toUpperCase();
+    if (shouldBeUpperCase.some(term => upperName.includes(term))) {
+      return upperName;
+    }
+    
+    // Diğerleri için title case
+    return cleanName.toLowerCase().replace(/(^|\s|[-.()])[a-züğıöşçA-ZÜĞIÖŞÇıI]/g, (match) => {
+      return match.toUpperCase();
+    });
   };
 
   const toggleItem = (itemId) => {
     setExpandedItems(prev => ({
       ...prev,
       [itemId]: !prev[itemId]
-    }));
-  };
+        }));
+    };
 
   // Tümünü Aç/Kapat fonksiyonları
   const toggleExpandAll = () => {
@@ -672,31 +744,16 @@ const BalanceSheetPreview = () => {
       let fontWeight = 'font-normal';
       let bgColor = 'bg-white';
       let textSize = 'text-sm';
-      let isUpperCase = false;
 
-      // Resimdeki gibi hiyerarşi düzenlemesi
       if (depth === 0) {
-        // Ana kategoriler (A.1, A.2, P.1, P.2, P.3) - büyük yazı, kalın, büyük harfler
         fontWeight = 'font-bold';
         bgColor = activeTab === 'active' ? 'bg-blue-100' : 'bg-indigo-100';
         textSize = 'text-base';
-        isUpperCase = true;
       } else if (depth === 1) {
-        // Alt kategoriler (A.1.1, A.1.2) - orta boyut, yarı kalın, büyük harfler  
         fontWeight = 'font-semibold';
         bgColor = activeTab === 'active' ? 'bg-blue-50' : 'bg-indigo-50';
-        textSize = 'text-sm';
-        isUpperCase = true;
       } else if (depth === 2) {
-        // En alt seviye (A.1.1.1, A.1.1.3) - normal boyut, orta kalın, normal harfler
         fontWeight = 'font-medium';
-        textSize = 'text-sm';
-        isUpperCase = false;
-      } else {
-        // Daha derin seviyeler - normal boyut, normal kalın, normal harfler
-        fontWeight = 'font-normal';
-        textSize = 'text-xs';
-        isUpperCase = false;
       }
 
       let paddingClass = '';
@@ -716,15 +773,10 @@ const BalanceSheetPreview = () => {
       const statusColor = item.definition && item.definition !== 'eşleşmedi' && hasData ? 'bg-green-500' : 
                          item.definition && item.definition !== 'eşleşmedi' && !hasData ? 'bg-blue-500' : 'bg-gray-400';
 
-      // Hesap adını formatla - resimdeki gibi
-      let displayDescription = item.description || item.account_name || 'Açıklama yok';
-      
-      if (isUpperCase) {
-        displayDescription = displayDescription.toUpperCase();
-      } else {
-        // Normal case - formatAccountName kullanarak her kelimenin baş harfini büyük yap
-        displayDescription = formatAccountName(displayDescription);
-      }
+      const isMainHeading = /^[IVX]+\./.test(item.description || '');
+      const displayDescription = isMainHeading ? 
+        (item.description || 'Açıklama yok').toUpperCase() : 
+        formatAccountName(item.description || 'Açıklama yok');
 
       rows.push(
         <tr 
@@ -735,7 +787,7 @@ const BalanceSheetPreview = () => {
           <td className="px-6 py-3 whitespace-nowrap border-r border-gray-200 w-1/6">
             <div className="flex items-center">
               {hasChildren && (
-                <span className="mr-2 text-gray-500 w-4 flex-shrink-0">
+                <span className="mr-2 text-gray-500 w-4 flex-shrink-0 text-center">
                   {isExpanded ? '−' : '+'}
                 </span>
               )}
@@ -746,8 +798,8 @@ const BalanceSheetPreview = () => {
           </td>
           <td className={`px-6 py-3 ${paddingClass}`}>
             <div className="flex items-center">
-              <div className={`w-3 h-3 rounded-full mr-3 ${statusColor}`}></div>
-              <div className={`${textSize} text-gray-900 ${fontWeight}`}>
+              <div className={`w-3 h-3 rounded-full mr-3 flex-shrink-0 ${statusColor}`}></div>
+              <div className={`${textSize} text-gray-900 ${fontWeight} ${isMainHeading ? 'uppercase' : ''}`}>
                 {displayDescription}
               </div>
             </div>
@@ -900,7 +952,7 @@ const BalanceSheetPreview = () => {
             
             {/* Header Butonları */}
             <div className="flex space-x-3">
-              <Link
+              <Link 
                 to="/balance-sheets/preview/edit"
                 className="inline-flex items-center px-4 py-2 border border-amber-600 text-sm font-medium rounded-md text-amber-600 bg-white hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition duration-150"
               >
@@ -954,7 +1006,7 @@ const BalanceSheetPreview = () => {
         {/* İçerik */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {/* Şirket Bilgileri Kartı */}
-          {previewData && (
+        {previewData && (
             <div className="bg-white shadow-lg rounded-2xl border border-gray-200 p-6 mb-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="flex items-center">
@@ -963,7 +1015,7 @@ const BalanceSheetPreview = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
                   </div>
-                  <div>
+              <div>
                     <h3 className="text-sm font-medium text-gray-500 mb-1">Şirket</h3>
                     <p className="text-lg font-bold text-gray-900 leading-tight">{previewData.company_info.name}</p>
                   </div>
@@ -973,8 +1025,8 @@ const BalanceSheetPreview = () => {
                     <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                  </div>
-                  <div>
+              </div>
+              <div>
                     <h3 className="text-sm font-medium text-gray-500 mb-1">Dönem</h3>
                     <p className="text-lg font-bold text-gray-900">{previewData.detected_data.year} - {previewData.detected_data.period}</p>
                   </div>
@@ -984,8 +1036,8 @@ const BalanceSheetPreview = () => {
                     <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                  </div>
-                  <div>
+              </div>
+              <div>
                     <h3 className="text-sm font-medium text-gray-500 mb-1">VKN</h3>
                     <p className="text-lg font-bold text-gray-900">{previewData.company_info.tax_number || 'Belirtilmemiş'}</p>
                   </div>
@@ -995,15 +1047,15 @@ const BalanceSheetPreview = () => {
                     <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                  </div>
-                  <div>
+              </div>
+              <div>
                     <h3 className="text-sm font-medium text-gray-500 mb-1">Kayıt Tarihi</h3>
                     <p className="text-lg font-bold text-gray-900">{new Date().toISOString().split('T')[0]}</p>
                   </div>
-                </div>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
           {/* Tab Navigasyonu */}
           <div className="mb-6">
@@ -1087,8 +1139,8 @@ const BalanceSheetPreview = () => {
               )}
               {(activeTab === 'active' ? activeHierarchy : passiveHierarchy).length > 0 && (
                 <span>, Sample Hierarchy Item: {JSON.stringify((activeTab === 'active' ? activeHierarchy : passiveHierarchy)[0])}</span>
-              )}
-            </div>
+          )}
+        </div>
 
             {(activeTab === 'active' ? activeHierarchy : passiveHierarchy).length === 0 ? (
               <div className="px-6 py-12 text-center">

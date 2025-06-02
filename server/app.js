@@ -760,7 +760,7 @@ async function extractFinancialDataWithGemini(filePath) {
   const jsonData = await fs.readFile("account_codes.json");
 
   let prompt =
-    `Bu PDF dosyasında yer alan "TEK DÜZEN HESAP PLANI AYRINTILI BİLANÇO VE AYRINTILI GELİR TABLOSU" altındaki **Aktif** ve **Pasif** tablolarını ayır.     
+    `Bu PDF dosyasında yer alan "TEK DÜZEN HESAP PLANI AYRINTILI BİLANÇO VE AYRINTILI GELİR TABLOSU" altındaki **Aktif** ve **Pasif** tablolarını ayır.     
 
 ÖNEMLI: PDF'te yer alan VKN (Vergi Kimlik Numarası), dönem yılını ve dönem tipini (YILLIK, Q1, Q2, Q3, Q4, vb.) çıkar. 
 ŞIRKET ADI OKUMA - Şirket adını okumaya çalışma, sadece VKN yeterli!
@@ -1183,14 +1183,14 @@ app.post("/companies", (req, res) => {
           });
         }
         
-        const newCompany = {
+    const newCompany = {
           id: this.lastID,
           name: title,
           title: title,
-          tax_number,
-          email: email || "",
-          trade_registry_number: trade_registry_number || "",
-          address: address || "",
+      tax_number,
+      email: email || "",
+      trade_registry_number: trade_registry_number || "",
+      address: address || "",
           industry: 'Genel',
           phone: phone || "",
           establishment_date: establishment_date || "",
@@ -1202,8 +1202,8 @@ app.post("/companies", (req, res) => {
           income_expenses_tax_compliance: income_expenses_tax_compliance || "",
           regulation_monitoring: regulation_monitoring || "",
           sector_notes: sector_notes || "",
-          created_at: new Date().toISOString().split('T')[0]
-        };
+      created_at: new Date().toISOString().split('T')[0]
+    };
         
         // Ortakları kaydet
         if (partners && Array.isArray(partners) && partners.length > 0) {
@@ -1231,13 +1231,13 @@ app.post("/companies", (req, res) => {
               console.error('Ortakları kaydetme hatası:', partnerError);
             });
         }
-        
+    
         console.log("Şirket başarıyla kaydedildi:", newCompany);
-        
-        res.status(201).json({
-          success: true,
-          message: "Şirket başarıyla oluşturuldu",
-          company: newCompany
+    
+    res.status(201).json({
+      success: true,
+      message: "Şirket başarıyla oluşturuldu",
+      company: newCompany
         });
       });
     });
@@ -2418,7 +2418,7 @@ app.post("/balance-sheets/prepare-preview", async (req, res) => {
         error: "Analiz edilmiş veri bulunamadı" 
       });
     }
-
+    
     // PDF'den gelen kalemlerle hesap planını eşleştir
     const mappedItems = detected_data.items.map(item => {
       return {

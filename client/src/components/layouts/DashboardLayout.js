@@ -22,7 +22,7 @@ const DashboardLayout = ({ children }) => {
     { name: 'Gösterge Paneli', href: '/dashboard', icon: HomeIcon },
     { name: 'Şirketler', href: '/companies', icon: BuildingOfficeIcon },
     { name: 'Bilançolar', href: '/balance-sheets', icon: DocumentTextIcon },
-    { name: 'Raporlar', href: '/reports', icon: DocumentChartBarIcon },
+    { name: 'Sektör Verileri', href: '/reports', icon: DocumentChartBarIcon },
     { name: 'Hesap Planı', href: '/account-categories', icon: TableCellsIcon },
     { name: 'Profil', href: '/profile', icon: UserIcon },
   ];

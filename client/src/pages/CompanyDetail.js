@@ -147,8 +147,66 @@ const CompanyDetail = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-6">
+      {/* Modern Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-6 mb-8 text-white">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <Link to="/companies" className="mr-4 p-3 rounded-xl bg-white bg-opacity-20 hover:bg-opacity-30 transition-colors">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </Link>
+            <div className="bg-white bg-opacity-20 p-4 rounded-xl mr-4">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold">{company.name}</h1>
+              <p className="text-blue-100 mt-1">VKN: {company.tax_number} | Şirket Detay Sayfası</p>
+            </div>
+          </div>
+
+          {/* Hızlı İşlemler Butonu */}
+          <div className="relative">
+            <button
+              onClick={() => setShowQuickActions(!showQuickActions)}
+              className="inline-flex items-center px-6 py-3 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-xl text-sm font-medium text-white hover:bg-opacity-30 transition-all duration-200"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Hızlı İşlemler
+              <svg className={`w-4 h-4 ml-2 transition-transform ${showQuickActions ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {/* Hızlı İşlemler Dropdown */}
+            {showQuickActions && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                <div className="py-1">
+                  {quickActions.map((action, index) => (
+                    <button
+                      key={index}
+                      onClick={action.action}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                      <div className={`w-8 h-8 ${action.color} rounded-lg flex items-center justify-center mr-3 text-white`}>
+                        {action.icon}
+                      </div>
+                      {action.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Old Header - Hidden */}
+      <div className="mb-6" style={{display: 'none'}}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
             <Link to="/companies" className="mr-4 p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors">

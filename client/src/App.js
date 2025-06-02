@@ -19,6 +19,7 @@ import BalanceSheetWithPlan from './pages/BalanceSheetWithPlan';
 import BalanceSheetPreview from './pages/BalanceSheetPreview';
 import BalanceSheetPreviewEdit from './pages/BalanceSheetPreviewEdit';
 import MultiBalanceAnalysis from './pages/MultiBalanceAnalysis';
+import AnalysisReport from './pages/AnalysisReport';
 import Reports from './pages/Reports';
 import Profile from './pages/Profile';
 import AccountCategories from './pages/AccountCategories';
@@ -179,6 +180,14 @@ function App() {
         <ProtectedRoute>
           <DashboardLayout>
             <MultiBalanceAnalysis />
+          </DashboardLayout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/balance-sheets/:id/analysis" element={
+        <ProtectedRoute>
+          <DashboardLayout>
+            <AnalysisReport />
           </DashboardLayout>
         </ProtectedRoute>
       } />
