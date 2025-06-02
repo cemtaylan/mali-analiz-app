@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { BalanceSheetAPI, CompanyAPI } from '../api';
+import ModernAlert from '../components/ModernAlert';
 
 // Tarih formatı DDMMYYYY
 const formatDateDDMMYYYY = (dateString) => {
@@ -63,6 +64,7 @@ const BalanceSheets = () => {
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
   const [duplicateBalanceData, setDuplicateBalanceData] = useState(null);
   const [proceedWithUpdate, setProceedWithUpdate] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ isOpen: false });
   
   const location = useLocation();
   const navigate = useNavigate();
@@ -1836,6 +1838,9 @@ const BalanceSheets = () => {
         📊 JSON Verisi ile Analiz Dene
         </button>
       </div>
+
+      {/* Modern Alert */}
+      <ModernAlert {...alertConfig} />
     </div>
   );
 };
